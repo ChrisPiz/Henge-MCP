@@ -11,11 +11,12 @@ El output no es una respuesta. Es un mapa visual: ves dónde el consenso es robu
 ## Quick install (5 min)
 
 ```bash
-git clone https://github.com/<your-user>/tenthai
+git clone https://github.com/ChrisPiz/tenthai.git
 cd tenthai
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-# Editar .env con ANTHROPIC_API_KEY (required) + OPENAI_API_KEY (default embed)
+# Editar .env con ANTHROPIC_API_KEY (requerido) + OPENAI_API_KEY (embed por defecto)
 python -m tenthai.server  # debe imprimir "✓ keys validated"
 ```
 
