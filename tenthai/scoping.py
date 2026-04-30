@@ -12,7 +12,7 @@ SCOPING_MAX_TOKENS = 800
 
 SCOPING_SYSTEM = """Recibirás una pregunta de decisión. Tu trabajo: generar 4-7 preguntas concretas que un asesor experto haría al usuario antes de poder dar consejo fundado.
 
-Las respuestas alimentarán a 9 marcos cognitivos: empírico (datos, números), histórico (precedentes, casos), primer-principios (restricciones), analógico, sistémico (segundo orden), ético (stakeholders), contrarian (supuestos), pre-mortem (modos de falla), optimista (upside).
+Las respuestas alimentarán a 9 consejeros con ángulos cognitivos distintos: empírico (datos, números), histórico (precedentes, casos), primer-principios (restricciones), analógico, sistémico (segundo orden), ético (stakeholders), contrarian (supuestos), pre-mortem (modos de falla), optimista (upside).
 
 Busca preguntas que cubran (cuando apliquen al dominio):
 - Datos cuantitativos personales (ingresos, ahorros, plazos, deudas, edad, dependientes)

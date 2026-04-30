@@ -98,17 +98,17 @@ def _validate_keys_at_startup():
 
 @mcp.tool()
 async def decide(question: str, context: str | None = None, skip_scoping: bool = False) -> dict:
-    """Mapa de desacuerdo: 9 marcos cognitivos + 1 disidente obligatorio (décimo hombre).
+    """Mapa de desacuerdo: 9 consejeros + 1 disidente obligatorio (décimo hombre).
 
     DOS FASES:
 
     Fase 1 — Scoping (default si no se pasa context):
     Devuelve {status: "needs_context", questions: [...]} con 4-7 preguntas concretas
     tailored al dominio. El caller (Claude Code) debe presentárselas al usuario antes
-    de proceder. Sin contexto rico, los marcos especulan o se quedan genéricos.
+    de proceder. Sin contexto rico, los consejeros especulan o se quedan genéricos.
 
     Fase 2 — Run (cuando context está presente o skip_scoping=True):
-    Corre 9 marcos en paralelo + el décimo hombre, devuelve mapa 2D con distancias,
+    Corre 9 consejeros en paralelo + el décimo hombre, devuelve mapa 2D con distancias,
     cita literal del disidente, y abre HTML en navegador.
 
     Args:

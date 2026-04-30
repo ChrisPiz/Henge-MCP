@@ -78,7 +78,7 @@ async def run_tenth_man(client, successful_frames, question):
     successful_frames: list of (frame_name, response_text) tuples.
     """
     consensus_block = "\n\n".join(
-        f"### Marco {i+1} — {frame}\n{resp}"
+        f"### Consejero {i+1} — {frame}\n{resp}"
         for i, (frame, resp) in enumerate(successful_frames)
     )
     user = (
@@ -114,8 +114,8 @@ async def run_agents(client, question, context=None):
     if n_ok < 8:
         failed_frames = [f for f, _, s in nine if s == "failed"]
         raise RuntimeError(
-            f"Solo {n_ok}/9 marcos cognitivos exitosos. Abortando (mínimo requerido: 8). "
-            f"Marcos fallidos: {failed_frames}"
+            f"Solo {n_ok}/9 consejeros exitosos. Abortando (mínimo requerido: 8). "
+            f"Consejeros fallidos: {failed_frames}"
         )
 
     successful = [(f, r) for f, r, s in nine if s == "ok"]

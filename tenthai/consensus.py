@@ -7,11 +7,11 @@ has no anchor to attack, narratively. Cost: ~CLP 30, +3-5s latency.
 HAIKU = "claude-haiku-4-5-20251001"
 CONSENSUS_MAX_TOKENS = 800
 
-CONSENSUS_SYSTEM = """Recibirás 9 análisis de una decisión, cada uno desde un marco cognitivo distinto. Tu trabajo: sintetizar el consenso emergente entre ellos.
+CONSENSUS_SYSTEM = """Recibirás 9 análisis de una decisión, cada uno desde un ángulo cognitivo distinto (cada uno es un consejero). Tu trabajo: sintetizar el consenso emergente entre ellos.
 
 Reglas:
-1. Identifica los 2-4 puntos donde los marcos convergen (aunque cada uno los justifica de forma distinta).
-2. Resume en 2-3 párrafos compactos. NO listes los marcos por nombre. NO cites a cada uno.
+1. Identifica los 2-4 puntos donde los nueve consejeros convergen (aunque cada uno los justifica de forma distinta).
+2. Resume en 2-3 párrafos compactos. NO listes los consejeros por nombre. NO cites a cada uno.
 3. Foco: qué creen los 9 EN COMÚN sobre la decisión. Qué tendencia neta emerge.
 4. Cierra con una sola línea destacada (en su propio párrafo): "**Inclinación neta:** ..." con la dirección que apunta el consenso.
 

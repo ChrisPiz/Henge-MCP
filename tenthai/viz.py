@@ -273,7 +273,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     fragility = (
         "Disidente vive en otro mundo — consenso frágil que vale la pena romper."
         if tenth_distance > 2 * max_frame_distance
-        else "Marcos ya dispersos — no había consenso fuerte que romper."
+        else "Consejeros divididos — no había consenso fuerte que romper."
     )
 
     # Map SVG (uses real MDS coords)
@@ -312,7 +312,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     <span class="glyph">∑</span>
     <h2>El <em>consenso</em> de los nueve</h2>
     <span class="rule"></span>
-    <span class="aside">qué creen <b>en común</b> los marcos</span>
+    <span class="aside">qué creen <b>en común</b> los nueve</span>
   </div>
 
   <article class="consensus">
@@ -862,12 +862,158 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   }}
   .colophon .right{{ text-align: right; }}
 
+  .guide{{
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 50;
+    font-family: var(--sans);
+  }}
+  .guide-toggle{{
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    padding: 12px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 24px -8px oklch(20% 0.012 60 / .45);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+    outline: none;
+  }}
+  .guide-toggle:hover{{
+    transform: translateY(-1px);
+    box-shadow: 0 10px 28px -8px oklch(20% 0.012 60 / .55);
+  }}
+  .guide-toggle:focus-visible{{
+    box-shadow: 0 0 0 3px var(--accent-soft), 0 6px 24px -8px oklch(20% 0.012 60 / .45);
+  }}
+  .guide-toggle .marker{{
+    width:7px; height:7px; border-radius:999px;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px oklch(56% 0.165 32 / .25);
+  }}
+  .guide-panel{{
+    display:none;
+    width: min(380px, calc(100vw - 48px));
+    max-height: min(72vh, 640px);
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    box-shadow: 0 24px 60px -16px oklch(20% 0.012 60 / .35);
+    margin-bottom: 12px;
+    overflow: hidden;
+    flex-direction: column;
+  }}
+  .guide.open .guide-panel{{ display: flex; }}
+  .guide-panel-body{{
+    overflow-y: auto;
+    padding: 26px 24px 4px 26px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--rule) transparent;
+  }}
+  .guide-panel-body::-webkit-scrollbar{{ width: 8px; }}
+  .guide-panel-body::-webkit-scrollbar-track{{ background: transparent; }}
+  .guide-panel-body::-webkit-scrollbar-thumb{{
+    background: var(--rule);
+    border-radius: 999px;
+    border: 2px solid var(--paper);
+  }}
+  .guide-panel-body::-webkit-scrollbar-thumb:hover{{ background: var(--ink-4); }}
+  .guide-panel-foot{{
+    flex-shrink: 0;
+    padding: 14px 26px 18px;
+    border-top: 1px solid var(--rule);
+    background: var(--paper);
+  }}
+  .guide-panel h3{{
+    margin: 0 0 4px;
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 22px;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    font-variation-settings: "SOFT" 30, "opsz" 60;
+  }}
+  .guide-panel h3 em{{ font-style: italic; color: var(--accent); }}
+  .guide-panel .kicker{{
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 14px;
+  }}
+  .guide-panel ol{{
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: g;
+  }}
+  .guide-panel ol li{{
+    counter-increment: g;
+    position: relative;
+    padding: 12px 0 12px 30px;
+    border-top: 1px solid var(--rule-2);
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--ink-2);
+  }}
+  .guide-panel ol li:first-child{{ border-top: none; }}
+  .guide-panel ol li::before{{
+    content: counter(g, decimal-leading-zero);
+    position: absolute;
+    left: 0; top: 12px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--ink-3);
+    letter-spacing: .08em;
+  }}
+  .guide-panel ol li b{{ color: var(--ink); font-weight: 600; }}
+  .guide-panel .foot{{
+    margin: 0 0 12px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--ink-2);
+    font-variation-settings: "opsz" 60;
+  }}
+  .guide-close{{
+    appearance: none;
+    -webkit-appearance: none;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    color: var(--ink-3);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    padding: 0;
+    outline: none;
+  }}
+  .guide-close:hover{{ color: var(--ink); }}
+  .guide-close:focus-visible{{ color: var(--accent); }}
+
   @media (max-width: 920px){{
     .page{{ padding: 32px 22px 64px; }}
     .strip{{ grid-template-columns: 1fr 1fr; }}
     .strip .stat:nth-child(3){{ grid-column: 1 / -1; padding: 16px 0 0; border-right:none; padding-left: 0; border-top: 1px solid var(--rule); margin-top: 8px;}}
     .frame-row{{ grid-template-columns: 26px 1fr 80px 16px; }}
     .frame-row .f-tag, .frame-row .f-bar{{ display:none; }}
+    .guide{{ right: 16px; bottom: 16px; }}
+    .guide-panel-body{{ padding: 22px 18px 4px 20px; }}
+    .guide-panel-foot{{ padding: 12px 20px 16px; }}
   }}
 </style>
 </head>
@@ -898,7 +1044,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
       <div class="val">{tenth_distance:.3f} <span class="num">vs centroide de los 9</span></div>
     </div>
     <div class="stat">
-      <div class="lbl">Marco más divergente</div>
+      <div class="lbl">Consejero más en contra</div>
       <div class="val">{html_mod.escape(most_divergent_name)} <span class="num">d {max_frame_distance:.3f}</span></div>
     </div>
     <div class="stat">
@@ -929,7 +1075,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     <div class="map-foot">
       <div class="legend">
         <span><i class="t"></i>Décimo hombre</span>
-        <span><i class="n"></i>Marcos consensus</span>
+        <span><i class="n"></i>Los nueve consejeros</span>
       </div>
       <div>Mapa MDS clásico · preserva distancias por pares</div>
     </div>
@@ -939,7 +1085,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
 
   <div class="sec">
     <span class="glyph">¶</span>
-    <h2>Los nueve marcos cognitivos</h2>
+    <h2>Los nueve consejeros</h2>
     <span class="rule"></span>
     <span class="aside">orden por <b>distancia al centroide</b> · click para expandir</span>
   </div>
@@ -991,6 +1137,48 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   </footer>
 
 </main>
+
+<aside class="guide" id="guide" aria-label="Cómo leer este reporte">
+  <div class="guide-panel" role="dialog" aria-labelledby="guide-title">
+    <div class="guide-panel-body">
+      <p class="kicker">Guía de lectura</p>
+      <h3 id="guide-title">Cómo abordar <em>este reporte</em></h3>
+      <ol>
+        <li><b>Empieza por el consenso, no por el décimo.</b> Es lo que los 9 consejeros creen en común — el ancla de la decisión.</li>
+        <li><b>Los 9 consejeros no son votos.</b> Son lentes distintos sobre el mismo problema. Lee las diferencias entre ellos, no la mayoría.</li>
+        <li><b>El décimo es auditoría, no recomendación.</b> Su rol es atacar el consenso para probar si aguanta. Sonar convincente es su trabajo, no señal de que tenga razón.</li>
+        <li><b>Aísla los ataques del décimo, no su veredicto.</b> Quédate con las preguntas que abre y evalúa cada una contra tu realidad — descarta su conclusión si no resiste.</li>
+        <li><b>Mira las métricas.</b> Fragilidad alta + distancia 10º alta = consenso débil, el disenso pesa más. Fragilidad baja = consenso robusto, el disenso es desafío retórico.</li>
+        <li><b>Aplica el test asimétrico.</b> Si el décimo describe un riesgo que reconoces como real en tu vida, súmalo aunque no cambies de bando. Si no lo reconoces, descártalo.</li>
+        <li><b>Tú decides.</b> Ningún consejero conoce tu contexto completo. El reporte expone tensiones; la elección es tuya.</li>
+      </ol>
+    </div>
+    <div class="guide-panel-foot">
+      <p class="foot">El consenso protege contra el error obvio. El décimo protege contra el error compartido. Necesitas ambos lentes — y ninguno reemplaza tu juicio.</p>
+      <button type="button" class="guide-close" onclick="document.getElementById('guide').classList.remove('open')">Cerrar</button>
+    </div>
+  </div>
+  <button type="button" class="guide-toggle" onclick="document.getElementById('guide').classList.toggle('open')" aria-expanded="false">
+    <span class="marker"></span>
+    ¿Cómo leer esto?
+  </button>
+</aside>
+
+<script>
+  (function(){{
+    var g = document.getElementById('guide');
+    var btn = g.querySelector('.guide-toggle');
+    btn.addEventListener('click', function(){{
+      btn.setAttribute('aria-expanded', g.classList.contains('open') ? 'true' : 'false');
+    }});
+    document.addEventListener('keydown', function(e){{
+      if(e.key === 'Escape' && g.classList.contains('open')){{
+        g.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+      }}
+    }});
+  }})();
+</script>
 
 <script>
   document.querySelectorAll('.frame').forEach(f => {{
