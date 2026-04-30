@@ -67,7 +67,11 @@ def test_storage_persists_and_indexes(tmp_path, monkeypatch):
         "id": rid,
         "timestamp": "2026-04-30T12:00:00-04:00",
         "question": "Should I ship this Friday?",
-        "summary": {"tenth_man_distance": 0.143, "consensus_fragility": "moderate (test)"},
+        "summary": {
+            "tenth_man_distance": 0.143,
+            "consensus_state": "aligned-stable",
+            "consensus_fragility": "Consejeros alineados — el disenso suena pero el consenso aguanta.",
+        },
     }
     html_path, json_path = storage.write_record(rdir, "<html>x</html>", payload)
     index_path = storage.write_index()
@@ -79,6 +83,28 @@ def test_storage_persists_and_indexes(tmp_path, monkeypatch):
     index_html = index_path.read_text(encoding="utf-8")
     assert "Should I ship this Friday?" in index_html
     assert "open ↗" in index_html
+    # New aligned-stable state surfaces as "aligned" in the index column
+    assert ">aligned<" in index_html
+
+
+def test_consensus_verdict_three_states():
+    """Verdict picks the right state for tight/fragile/divided shapes."""
+    from tenthai.viz import consensus_verdict
+
+    # 9 tight (max 0.08), tenth moderate (0.10) → aligned-stable
+    v = consensus_verdict(tenth_distance=0.10, max_frame_distance=0.08)
+    assert v["state"] == "aligned-stable"
+    assert "alineados" in v["verdict"].lower()
+
+    # 9 tight (max 0.119), tenth pushed (0.213) → aligned-fragile
+    v = consensus_verdict(tenth_distance=0.213, max_frame_distance=0.119)
+    assert v["state"] == "aligned-fragile"
+    assert "frágil" in v["verdict"].lower()
+
+    # 9 spread (max 0.22) → divided regardless of tenth
+    v = consensus_verdict(tenth_distance=0.40, max_frame_distance=0.22)
+    assert v["state"] == "divided"
+    assert "divididos" in v["verdict"].lower()
 
 
 def test_voyage_failure_returns_structured_error(monkeypatch):

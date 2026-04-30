@@ -91,13 +91,26 @@ def _format_row(record: dict) -> str:
         question = question[:108].rsplit(" ", 1)[0] + "…"
 
     summary = record.get("summary", {})
+    state = summary.get("consensus_state")
     fragility = summary.get("consensus_fragility", "—")
-    if "fragile" in fragility.lower():
-        verdict = "fragile consensus"
-    elif "moderate" in fragility.lower():
-        verdict = "moderate"
+    state_labels = {
+        "aligned-stable": "aligned",
+        "aligned-fragile": "fragile consensus",
+        "divided": "divided",
+    }
+    if state in state_labels:
+        verdict = state_labels[state]
     else:
-        verdict = fragility[:32]
+        # Fallback for legacy records without consensus_state
+        lowered = fragility.lower()
+        if "frágil" in lowered or "fragile" in lowered:
+            verdict = "fragile consensus"
+        elif "alineados" in lowered or "aligned" in lowered:
+            verdict = "aligned"
+        elif "divididos" in lowered or "divided" in lowered or "moderate" in lowered:
+            verdict = "divided"
+        else:
+            verdict = fragility[:32]
 
     tenth_d = summary.get("tenth_man_distance")
     tenth_str = f"{tenth_d:.3f}" if isinstance(tenth_d, (int, float)) else "—"

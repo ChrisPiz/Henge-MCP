@@ -19,7 +19,7 @@ from .consensus import synthesize_consensus
 from .embed import embed_responses, project_mds
 from .scoping import generate_questions
 from .storage import make_report_dir, make_report_id, write_index, write_record
-from .viz import render
+from .viz import consensus_verdict, render
 
 # Load .env from project root regardless of cwd (Claude Code may spawn subprocess elsewhere).
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -180,6 +180,7 @@ async def decide(question: str, context: str | None = None, skip_scoping: bool =
     min_frame_distance = min(frame_distances)
     most_divergent_frame = results[frame_distances.index(max_frame_distance)][0]
     closest_frame = results[frame_distances.index(min_frame_distance)][0]
+    verdict = consensus_verdict(distances_list[9], max_frame_distance)
 
     report_id = make_report_id(question)
     report_dir = make_report_dir(report_id)
@@ -211,11 +212,8 @@ async def decide(question: str, context: str | None = None, skip_scoping: bool =
             "min_frame_distance": min_frame_distance,
             "most_divergent_frame": most_divergent_frame,
             "closest_frame": closest_frame,
-            "consensus_fragility": (
-                "fragile (tenth-man lives in another world)"
-                if distances_list[9] > 2 * max_frame_distance
-                else "moderate (frames already dispersed, no strong consensus)"
-            ),
+            "consensus_state": verdict["state"],
+            "consensus_fragility": verdict["verdict"],
             "n_frames_succeeded": sum(1 for _, _, s in results[:9] if s == "ok"),
         },
         "embed": {
@@ -265,13 +263,10 @@ async def decide(question: str, context: str | None = None, skip_scoping: bool =
             "response": results[9][1],  # full text
         },
         "summary": {
-            "tenth_man_distance": round(proj["distance_to_centroid_of_9"][9], 3),
-            "max_frame_distance": round(max(proj["distance_to_centroid_of_9"][:9]), 3),
-            "consensus_fragility": (
-                "fragile (tenth-man lives in another world)"
-                if proj["distance_to_centroid_of_9"][9] > 2 * max(proj["distance_to_centroid_of_9"][:9])
-                else "moderate (frames already dispersed, no strong consensus)"
-            ),
+            "tenth_man_distance": round(distances_list[9], 3),
+            "max_frame_distance": round(max_frame_distance, 3),
+            "consensus_state": verdict["state"],
+            "consensus_fragility": verdict["verdict"],
             "n_frames_succeeded": sum(1 for _, _, s in results[:9] if s == "ok"),
             "embed_provider": embed_result["provider"],
             "embed_model": embed_result["model"],

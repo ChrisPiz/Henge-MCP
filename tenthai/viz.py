@@ -17,6 +17,44 @@ import re
 from datetime import datetime
 
 
+# Calibration for consensus_verdict() — empirical defaults for voyage-3-large /
+# text-embedding-3-small over Spanish reasoning text. Tighten or loosen if you
+# observe systematic miscalibration over many runs.
+TIGHT_THRESHOLD = 0.15  # max_frame below this = the 9 are clustered
+DISSENT_RATIO = 1.6     # tenth_distance / max_frame above this = tenth meaningfully separated
+
+
+def consensus_verdict(tenth_distance: float, max_frame_distance: float) -> dict:
+    """Three-state classification of the consensus shape.
+
+    - aligned-stable:  9 advisors tight, tenth's dissent is moderate. The consensus holds.
+    - aligned-fragile: 9 tight, but the tenth is far enough to coherently break it.
+    - divided:         the 9 themselves are spread — there was no strong consensus to break.
+
+    The previous binary model conflated "aligned + moderate dissent" with "divided",
+    which mislabeled tightly-clustered 9s as divided whenever the tenth wasn't
+    extreme. This helper is the single source of truth for the verdict text.
+    """
+    tight_nine = max_frame_distance < TIGHT_THRESHOLD
+    if not tight_nine:
+        return {
+            "state": "divided",
+            "label_short": "divided",
+            "verdict": "Consejeros divididos — no había consenso fuerte para empezar.",
+        }
+    if tenth_distance > DISSENT_RATIO * max_frame_distance:
+        return {
+            "state": "aligned-fragile",
+            "label_short": "fragile consensus",
+            "verdict": "Consenso fuerte pero frágil — el disidente lo rompe coherentemente.",
+        }
+    return {
+        "state": "aligned-stable",
+        "label_short": "aligned",
+        "verdict": "Consejeros alineados — el disenso suena pero el consenso aguanta.",
+    }
+
+
 FRAME_INDEX = {
     "empirical": "01",
     "historical": "02",
@@ -272,11 +310,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     closest_frame_idx = frame_distances.index(min_frame_distance)
     most_divergent_name = frames[most_divergent_idx]
 
-    fragility = (
-        "Disidente vive en otro mundo — consenso frágil que vale la pena romper."
-        if tenth_distance > 2 * max_frame_distance
-        else "Consejeros divididos — no había consenso fuerte que romper."
-    )
+    fragility = consensus_verdict(tenth_distance, max_frame_distance)["verdict"]
 
     # Map SVG (uses real MDS coords)
     map_svg = _build_map_svg(
