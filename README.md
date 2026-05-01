@@ -320,7 +320,7 @@ Nine consensus frames + one mandatory dissenter:
 | 9 | pre-mortem         | assume it failed in 12 months — describe how              |
 | 10| **tenth-man**      | steel-man dissent, mandatory, after the nine align        |
 
-All frames respond in the **same language as the question** (Spanish question → Spanish answer; English → English).
+All frames respond in the **same language as the question** (Spanish question → Spanish answer; English → English). The report chrome (headings, labels, reading guide) follows the same rule by auto-detecting the question's language; force a single locale with `HENGE_LOCALE=en` or `HENGE_LOCALE=es` in your `.env`.
 
 ---
 

@@ -18,8 +18,45 @@ with a 3-up failure-modes grid when the [FAILURE_MODES] block is present.
 """
 import html as html_mod
 import math
+import os
 import re
 from datetime import datetime
+
+
+# ───────── Locale ─────────
+# A) auto-detect from the question's character/word frequency
+# B) override with HENGE_LOCALE=en|es (env var)
+
+_SPANISH_RE = re.compile(
+    r"[¿¡áéíóúñü]|"
+    r"\b(qué|cómo|cuál|cuándo|dónde|por\s?qué|si|debo|debería|tengo|tiene|"
+    r"hacer|saber|nuestro|nuestra|nosotros|ustedes|ellos|ellas|aquí|allí|"
+    r"esto|eso|aquello|para|porque|cuando|donde|conmigo|conviene)\b",
+    re.IGNORECASE,
+)
+_ENGLISH_RE = re.compile(
+    r"\b(should|would|could|the|i|my|how|what|when|where|why|which|do|does|did|"
+    r"is|am|are|was|were|will|can|may|might|must|have|has|had|been|that|this)\b",
+    re.IGNORECASE,
+)
+
+
+def detect_locale(question: str) -> str:
+    """Return ``'en'`` or ``'es'``.
+
+    Resolution order:
+      1. ``HENGE_LOCALE`` env var, if set to ``en`` or ``es``.
+      2. Heuristic on the question text — whichever language has more matches.
+      3. Fallback ``'en'`` (default chrome language).
+    """
+    forced = os.environ.get("HENGE_LOCALE", "").strip().lower()
+    if forced in ("en", "es"):
+        return forced
+    if not question:
+        return "en"
+    spanish_hits = len(_SPANISH_RE.findall(question))
+    english_hits = len(_ENGLISH_RE.findall(question))
+    return "es" if spanish_hits > english_hits else "en"
 
 
 # Calibration for consensus_verdict() — empirical defaults for voyage-3-large /
@@ -29,7 +66,180 @@ TIGHT_THRESHOLD = 0.15  # max_frame below this = the 9 are clustered
 DISSENT_RATIO = 1.6     # tenth_distance / max_frame above this = tenth meaningfully separated
 
 
-def consensus_verdict(tenth_distance: float, max_frame_distance: float) -> dict:
+TRANSLATIONS = {
+    "en": {
+        "page_title": "Henge · Disagreement Map",
+        "screen_label": "Henge Report",
+        "masthead_report": "Report",
+        "hero_h_a": "Nine advisors aligned.",
+        "hero_h_b": "The tenth must dissent.",
+        "hero_dek": "Your question runs through nine cognitive frames. We measure the consensus and force a tenth to disagree with rigor.",
+        "stat_tenth_d": "Tenth · d",
+        "stat_vs_centroid": "vs centroid",
+        "stat_closest": "Closest",
+        "stat_most_divergent": "Most divergent",
+        "stat_verdict": "Verdict",
+        "verdict_label_aligned": "Aligned",
+        "verdict_label_fragile": "Fragile",
+        "verdict_label_divided": "Divided",
+        "verdict_sub_aligned": "consensus holds",
+        "verdict_sub_fragile": "fragile consensus",
+        "verdict_sub_divided": "no strong consensus",
+        "verdict_text_aligned": "Advisors aligned — dissent sounds reasonable but consensus holds.",
+        "verdict_text_fragile": "Strong but fragile consensus — the dissenter breaks it coherently.",
+        "verdict_text_divided": "Advisors divided — there was no strong consensus to begin with.",
+        "section01_eyebrow_prefix": "Report · #",
+        "section01_h2_a": "The question ",
+        "section01_h2_em": "the nine answered",
+        "fig_label": "fig.01 · disagreement map",
+        "fig_meta": "10 voices · MDS · cosine",
+        "legend_tenth": "Tenth man",
+        "legend_consensus": "Consensus frames",
+        "map_help_aria": "How to read this map",
+        "map_help_title": "How to read this map",
+        "map_help_p1": "Each point is one advisor.",
+        "map_help_p2": "The <strong>centroid</strong> at the center is the consensus zone — where the group converges.",
+        "map_help_p3": "<strong>Closer</strong> to the center = more aligned with the rest.<br><strong>Farther</strong> = thinks differently.",
+        "map_help_p4": "The <strong style=\"color: var(--midnight-navy); background: var(--chartreuse); padding: 0 4px; border-radius: 3px;\">10 · tenth-man</strong> point is the mandatory dissenter.",
+        "map_help_p5": "Concentric rings mark equal distances from the centroid.",
+        "footcell_tenth_d": "Tenth · d",
+        "footcell_tenth_sub": "forced to dissent",
+        "footcell_closest": "Closest",
+        "footcell_divergent": "Most divergent (of the 9)",
+        "footcell_spread": "Internal spread",
+        "footcell_spread_sub": "σ across the 9 frames",
+        "consensus_tag_prefix": "The consensus of the 9 · ",
+        "consensus_lead": "What the nine advisors agree on, in one line:",
+        "consensus_d_label_html": "max · vs centroid",
+        "consensus_default_title": "What the nine agree on",
+        "tenth_tag_label": "The dissent of the tenth · STEEL-MAN",
+        "tenth_lead": "The mandatory dissenter's strongest case against the nine:",
+        "tenth_h3_a": "Why the nine ",
+        "tenth_h3_em": "might be wrong",
+        "tenth_d_label": "distance · centroid",
+        "tenth_foot_left": "Generated under constraint · <b>steel-man mandatory</b>",
+        "tenth_modes_h4": "Consensus failure modes",
+        "section02_eyebrow": "Cognitive frames · 9 voices",
+        "section02_h2_a": "The nine, ranked by ",
+        "section02_h2_em": "distance to centroid",
+        "section02_sub": "Each frame brings a different lens: empirical, systemic, historical, analogical. The closer to the centroid, the more it represents the consensus. The farther, the more it reasons alone.",
+        "frames_head_idx": "Idx",
+        "frames_head_frame": "Frame",
+        "frames_head_status": "Status",
+        "frames_head_distance": "Distance",
+        "frames_head_d": "d",
+        "flag_closest": "closest",
+        "flag_farthest": "farthest",
+        "svg_centroid": "CENTROID",
+        "svg_steelman": "steel-man dissent",
+        "guide_kicker": "Reading guide",
+        "guide_title_a": "How to approach ",
+        "guide_title_em": "this report",
+        "guide_close": "Close",
+        "guide_btn": "How do I read this?",
+        "guide_aria": "How to read this report",
+        "guide_rule_1": "<b>Start with the consensus, not the tenth.</b> It's what the 9 advisors agree on — the anchor of the decision.",
+        "guide_rule_2": "<b>The 9 advisors aren't votes.</b> They're distinct lenses on the same problem. Read the differences between them, not the majority.",
+        "guide_rule_3": "<b>The tenth is audit, not recommendation.</b> Its role is to attack the consensus to test if it holds. Sounding convincing is its job, not a signal it's right.",
+        "guide_rule_4": "<b>Isolate the tenth's attacks, not its verdict.</b> Keep the questions it opens and evaluate each against your reality — discard its conclusion if it doesn't hold.",
+        "guide_rule_5": "<b>Read the metrics.</b> High fragility + high tenth-man distance = weak consensus, dissent matters more. Low fragility = robust consensus, dissent is rhetorical.",
+        "guide_rule_6": "<b>Apply the asymmetric test.</b> If the tenth names a risk you recognize as real in your life, add it even if you don't switch sides. If you don't recognize it, discard.",
+        "guide_rule_7": "<b>You decide.</b> No advisor knows your full context. The report exposes tensions; the choice is yours.",
+        "guide_foot": "Consensus protects against the obvious error. The tenth protects against the shared one. You need both lenses — and neither replaces your judgment.",
+        "colophon_tagline": "Nine voices aligned aren't signal — just coherent noise.",
+    },
+    "es": {
+        "page_title": "Henge · Mapa de desacuerdo",
+        "screen_label": "Reporte Henge",
+        "masthead_report": "Reporte",
+        "hero_h_a": "Nueve consejeros alineados.",
+        "hero_h_b": "El décimo debe disentir.",
+        "hero_dek": "Tu pregunta corre por nueve marcos cognitivos. Medimos el consenso y obligamos a un décimo a discrepar con rigor.",
+        "stat_tenth_d": "Décimo · d",
+        "stat_vs_centroid": "vs centroide",
+        "stat_closest": "Más cercano",
+        "stat_most_divergent": "Más divergente",
+        "stat_verdict": "Veredicto",
+        "verdict_label_aligned": "Alineado",
+        "verdict_label_fragile": "Frágil",
+        "verdict_label_divided": "Disperso",
+        "verdict_sub_aligned": "el consenso aguanta",
+        "verdict_sub_fragile": "consenso frágil",
+        "verdict_sub_divided": "sin consenso fuerte",
+        "verdict_text_aligned": "Consejeros alineados — el disenso suena pero el consenso aguanta.",
+        "verdict_text_fragile": "Consenso fuerte pero frágil — el disidente lo rompe coherentemente.",
+        "verdict_text_divided": "Consejeros divididos — no había consenso fuerte para empezar.",
+        "section01_eyebrow_prefix": "Reporte · #",
+        "section01_h2_a": "La pregunta ",
+        "section01_h2_em": "que los nueve respondieron",
+        "fig_label": "fig.01 · mapa de desacuerdo",
+        "fig_meta": "10 voces · MDS · cosine",
+        "legend_tenth": "Décimo hombre",
+        "legend_consensus": "Marcos del consenso",
+        "map_help_aria": "Cómo leer este mapa",
+        "map_help_title": "Cómo leer este mapa",
+        "map_help_p1": "Cada punto es un consejero.",
+        "map_help_p2": "El <strong>centroide</strong> al centro es la zona de consenso — donde el grupo converge.",
+        "map_help_p3": "<strong>Más cerca</strong> del centro = más alineado con el resto.<br><strong>Más lejos</strong> = piensa distinto.",
+        "map_help_p4": "El <strong style=\"color: var(--midnight-navy); background: var(--chartreuse); padding: 0 4px; border-radius: 3px;\">10 · décimo hombre</strong> es el disidente obligado.",
+        "map_help_p5": "Los anillos concéntricos marcan distancias iguales al centroide.",
+        "footcell_tenth_d": "Décimo · d",
+        "footcell_tenth_sub": "obligado a discrepar",
+        "footcell_closest": "Más cercano",
+        "footcell_divergent": "Más divergente (de los 9)",
+        "footcell_spread": "Spread interno",
+        "footcell_spread_sub": "σ entre los 9 marcos",
+        "consensus_tag_prefix": "El consenso de los 9 · ",
+        "consensus_lead": "En lo que los nueve coinciden, en una línea:",
+        "consensus_d_label_html": "max · vs centroide",
+        "consensus_default_title": "Lo que los nueve coinciden",
+        "tenth_tag_label": "El disenso del décimo · STEEL-MAN",
+        "tenth_lead": "El argumento más fuerte del disidente obligado contra los nueve:",
+        "tenth_h3_a": "Por qué los nueve ",
+        "tenth_h3_em": "podrían estar equivocados",
+        "tenth_d_label": "distancia · centroide",
+        "tenth_foot_left": "Generado bajo restricción · <b>steel-man obligatorio</b>",
+        "tenth_modes_h4": "Modos de fallo del consenso",
+        "section02_eyebrow": "Marcos cognitivos · 9 voces",
+        "section02_h2_a": "Los nueve, ordenados por ",
+        "section02_h2_em": "distancia al centroide",
+        "section02_sub": "Cada marco aporta una lente: empírica, sistémica, histórica, analógica. Cuanto más cerca del centroide, más representa el consenso. Cuanto más lejos, más solo razona.",
+        "frames_head_idx": "Idx",
+        "frames_head_frame": "Marco",
+        "frames_head_status": "Estado",
+        "frames_head_distance": "Distancia",
+        "frames_head_d": "d",
+        "flag_closest": "más cercano",
+        "flag_farthest": "más lejano",
+        "svg_centroid": "CENTROIDE",
+        "svg_steelman": "disenso steel-man",
+        "guide_kicker": "Guía de lectura",
+        "guide_title_a": "Cómo abordar ",
+        "guide_title_em": "este reporte",
+        "guide_close": "Cerrar",
+        "guide_btn": "¿Cómo leer esto?",
+        "guide_aria": "Cómo leer este reporte",
+        "guide_rule_1": "<b>Empieza por el consenso, no por el décimo.</b> Es lo que los 9 consejeros creen en común — el ancla de la decisión.",
+        "guide_rule_2": "<b>Los 9 consejeros no son votos.</b> Son lentes distintos sobre el mismo problema. Lee las diferencias entre ellos, no la mayoría.",
+        "guide_rule_3": "<b>El décimo es auditoría, no recomendación.</b> Su rol es atacar el consenso para probar si aguanta. Sonar convincente es su trabajo, no señal de que tenga razón.",
+        "guide_rule_4": "<b>Aísla los ataques del décimo, no su veredicto.</b> Quédate con las preguntas que abre y evalúa cada una contra tu realidad — descarta su conclusión si no resiste.",
+        "guide_rule_5": "<b>Mira las métricas.</b> Fragilidad alta + distancia 10º alta = consenso débil, el disenso pesa más. Fragilidad baja = consenso robusto, el disenso es retórico.",
+        "guide_rule_6": "<b>Aplica el test asimétrico.</b> Si el décimo nombra un riesgo que reconoces como real en tu vida, súmalo aunque no cambies de bando. Si no lo reconoces, descártalo.",
+        "guide_rule_7": "<b>Tú decides.</b> Ningún consejero conoce tu contexto completo. El reporte expone tensiones; la elección es tuya.",
+        "guide_foot": "El consenso protege contra el error obvio. El décimo protege contra el error compartido. Necesitas ambos lentes — y ninguno reemplaza tu juicio.",
+        "colophon_tagline": "Nueve voces alineadas no son señal — son ruido coherente.",
+    },
+}
+
+
+def t(locale: str, key: str) -> str:
+    """Lookup a chrome string for the given locale, falling back to English."""
+    return TRANSLATIONS.get(locale, TRANSLATIONS["en"]).get(
+        key, TRANSLATIONS["en"].get(key, key)
+    )
+
+
+def consensus_verdict(tenth_distance: float, max_frame_distance: float, locale: str = "en") -> dict:
     """Three-state classification of the consensus shape.
 
     - aligned-stable:  9 advisors tight, tenth's dissent is moderate. The consensus holds.
@@ -45,18 +255,18 @@ def consensus_verdict(tenth_distance: float, max_frame_distance: float) -> dict:
         return {
             "state": "divided",
             "label_short": "divided",
-            "verdict": "Advisors divided — there was no strong consensus to begin with.",
+            "verdict": t(locale, "verdict_text_divided"),
         }
     if tenth_distance > DISSENT_RATIO * max_frame_distance:
         return {
             "state": "aligned-fragile",
             "label_short": "fragile consensus",
-            "verdict": "Strong but fragile consensus — the dissenter breaks it coherently.",
+            "verdict": t(locale, "verdict_text_fragile"),
         }
     return {
         "state": "aligned-stable",
         "label_short": "aligned",
-        "verdict": "Advisors aligned — dissent sounds reasonable but consensus holds.",
+        "verdict": t(locale, "verdict_text_aligned"),
     }
 
 
@@ -221,7 +431,7 @@ def _map_to_svg(coords_2d):
     return [(_MAP_CX + x * scale, _MAP_CY + y * scale) for x, y in zip(xs, ys)]
 
 
-def _build_map_svg(coords_2d, frames, distances, max_frame_dist, min_frame_dist):
+def _build_map_svg(coords_2d, frames, distances, max_frame_dist, min_frame_dist, locale="en"):
     """Generate the v3 disagreement-map SVG string.
 
     Visual structure:
@@ -253,7 +463,7 @@ def _build_map_svg(coords_2d, frames, distances, max_frame_dist, min_frame_dist)
         f'<rect x="{cx - 8}" y="{cy - 8}" width="16" height="16" fill="none" '
         f'stroke="#1b2540" stroke-width="1" transform="rotate(45 {cx} {cy})"/>',
         f'<text x="{cx + 18}" y="{cy - 3}" font-family="JetBrains Mono, monospace" '
-        f'font-size="11" fill="#6b7184" letter-spacing="1">CENTROID</text>',
+        f'font-size="11" fill="#6b7184" letter-spacing="1">{t(locale, "svg_centroid")}</text>',
         '</g>',
     ]
 
@@ -305,9 +515,9 @@ def _build_map_svg(coords_2d, frames, distances, max_frame_dist, min_frame_dist)
         marker_r = 7 if is_closest else 6
         suffix = ""
         if is_closest:
-            suffix = " · closest"
+            suffix = " · " + t(locale, "flag_closest")
         elif is_farthest:
-            suffix = " · farthest"
+            suffix = " · " + t(locale, "flag_farthest")
         parts.append('<g>')
         parts.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{marker_r}" fill="#1b2540"/>')
         if is_closest:
@@ -346,7 +556,7 @@ def _build_map_svg(coords_2d, frames, distances, max_frame_dist, min_frame_dist)
     parts.append(
         f'<text x="{tx:.1f}" y="{ty + label_offset + 16:.1f}" text-anchor="middle" '
         f'font-family="JetBrains Mono, monospace" font-size="11" fill="#1b2540">'
-        f'steel-man dissent</text>'
+        f'{t(locale, "svg_steelman")}</text>'
     )
     parts.append('</g>')
 
@@ -426,6 +636,8 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     map card + optional consensus card + tenth-man card) → 02 Frames (frames
     table) → colophon.
     """
+    locale = detect_locale(question)
+
     frames = [r[0] for r in results]
     responses = [r[1] for r in results]
     statuses = [r[2] for r in results]
@@ -440,20 +652,20 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     closest_name = frames[closest_frame_idx]
     spread_sigma = _stddev(frame_distances)
 
-    verdict = consensus_verdict(tenth_distance, max_frame_distance)
+    verdict = consensus_verdict(tenth_distance, max_frame_distance, locale=locale)
     fragility_text = verdict["verdict"]
     verdict_short = verdict["label_short"]
     verdict_state = verdict["state"]
-    # Hero verdict cell — short editorial label
+    # Hero verdict cell — short editorial label, localized
     hero_verdict_label = {
-        "aligned-stable": "Aligned",
-        "aligned-fragile": "Fragile",
-        "divided": "Divided",
+        "aligned-stable": t(locale, "verdict_label_aligned"),
+        "aligned-fragile": t(locale, "verdict_label_fragile"),
+        "divided": t(locale, "verdict_label_divided"),
     }.get(verdict_state, "—")
     hero_verdict_sub = {
-        "aligned-stable": "consensus holds",
-        "aligned-fragile": "fragile consensus",
-        "divided": "no strong consensus",
+        "aligned-stable": t(locale, "verdict_sub_aligned"),
+        "aligned-fragile": t(locale, "verdict_sub_fragile"),
+        "divided": t(locale, "verdict_sub_divided"),
     }.get(verdict_state, "")
 
     # Map SVG (real MDS coords scaled into the v3 viewBox)
@@ -463,6 +675,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
         distances=distances,
         max_frame_dist=max_frame_distance,
         min_frame_dist=min_frame_distance,
+        locale=locale,
     )
 
     # Frames sorted by distance ASC; closest is default open
@@ -476,8 +689,8 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
             max_dist=max_frame_distance,
             idx_str=FRAME_INDEX.get(frames[i], f"{i + 1:02d}"),
             is_open=(i == closest_frame_idx),
-            flag=("closest" if i == closest_frame_idx
-                  else "farthest" if i == most_divergent_idx
+            flag=(t(locale, "flag_closest") if i == closest_frame_idx
+                  else t(locale, "flag_farthest") if i == most_divergent_idx
                   else None),
         )
         for i in frame_order
@@ -497,7 +710,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
                 f'</div>'
             )
         tenth_modes_html = (
-            '<h4><span class="ord">§ 4</span>Consensus failure modes</h4>'
+            f'<h4><span class="ord">§ 4</span>{t(locale, "tenth_modes_h4")}</h4>'
             '<div class="modes">' + "".join(mode_cards) + '</div>'
         )
     else:
@@ -508,19 +721,19 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     if consensus:
         consensus_title, consensus_body_md = _split_consensus_title(consensus)
         if not consensus_title:
-            consensus_title = "What the nine agree on"
+            consensus_title = t(locale, "consensus_default_title")
         consensus_html = _md_to_html(consensus_body_md)
         consensus_block_html = f"""
     <article class="consensus-card">
       <header class="consensus-top">
         <div>
-          <div class="consensus-tag"><span class="d"></span>The consensus of the 9 · {html_mod.escape(verdict_short.upper())}</div>
-          <p class="consensus-lead">What the nine advisors agree on, in one line:</p>
+          <div class="consensus-tag"><span class="d"></span>{t(locale, "consensus_tag_prefix")}{html_mod.escape(verdict_short.upper())}</div>
+          <p class="consensus-lead">{t(locale, "consensus_lead")}</p>
           <h3>{html_mod.escape(consensus_title)}</h3>
         </div>
         <div class="consensus-d">
           <b>{max_frame_distance:.3f}</b>
-          max · vs centroid
+          {t(locale, "consensus_d_label_html")}
         </div>
       </header>
       <div class="consensus-body">
@@ -539,7 +752,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Henge · Disagreement Map</title>
+<title>{t(locale, "page_title")}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,450;9..40,500;9..40,600&family=Fraunces:opsz,wght@9..144,400;9..144,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -1374,12 +1587,12 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
 </style>
 </head>
 <body>
-<main data-screen-label="Henge Report">
+<main data-screen-label="{t(locale, "screen_label")}">
 
   <header class="masthead">
     <div class="logo"><span class="mk">10</span> Henge</div>
     <div class="mast-meta">
-      <b>Report #{report_id}</b><span class="sep">·</span>{timestamp}<span class="sep">·</span>v0.4
+      <b>{t(locale, "masthead_report")} #{report_id}</b><span class="sep">·</span>{timestamp}<span class="sep">·</span>v0.4
     </div>
   </header>
 
@@ -1387,28 +1600,28 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     <div class="hero-bg" aria-hidden="true"></div>
     <div class="hero-inner">
       <div>
-        <h1 class="hero-h">Nine advisors aligned.<br><em>The tenth must dissent.</em></h1>
-        <p class="hero-dek">Your question runs through nine cognitive frames. We measure the consensus and force a tenth to disagree with rigor.</p>
+        <h1 class="hero-h">{t(locale, "hero_h_a")}<br><em>{t(locale, "hero_h_b")}</em></h1>
+        <p class="hero-dek">{t(locale, "hero_dek")}</p>
       </div>
 
       <div class="hero-stats">
         <div class="hero-stat">
-          <div class="lbl">Tenth · d</div>
+          <div class="lbl">{t(locale, "stat_tenth_d")}</div>
           <div class="val acc">{tenth_distance:.3f}</div>
-          <div class="sub">vs centroid</div>
+          <div class="sub">{t(locale, "stat_vs_centroid")}</div>
         </div>
         <div class="hero-stat">
-          <div class="lbl">Closest</div>
+          <div class="lbl">{t(locale, "stat_closest")}</div>
           <div class="val">{min_frame_distance:.3f}</div>
           <div class="sub">{html_mod.escape(closest_name)}</div>
         </div>
         <div class="hero-stat">
-          <div class="lbl">Most divergent</div>
+          <div class="lbl">{t(locale, "stat_most_divergent")}</div>
           <div class="val">{max_frame_distance:.3f}</div>
           <div class="sub">{html_mod.escape(most_divergent_name)}</div>
         </div>
         <div class="hero-stat">
-          <div class="lbl">Verdict</div>
+          <div class="lbl">{t(locale, "stat_verdict")}</div>
           <div class="val">{html_mod.escape(hero_verdict_label)}</div>
           <div class="sub">{html_mod.escape(hero_verdict_sub)}</div>
         </div>
@@ -1421,8 +1634,8 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   <section class="section">
     <div class="sec-head">
       <div class="l">
-        <div class="sec-eyebrow"><span class="n">01</span>Report · #{report_id}</div>
-        <h2>The question <em>the nine answered</em></h2>
+        <div class="sec-eyebrow"><span class="n">01</span>{t(locale, "section01_eyebrow_prefix")}{report_id}</div>
+        <h2>{t(locale, "section01_h2_a")}<em>{t(locale, "section01_h2_em")}</em></h2>
         <blockquote class="question-pull">{question_safe}</blockquote>
       </div>
     </div>
@@ -1430,26 +1643,25 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     <section class="map-card">
       <div class="map-top">
         <div class="l">
-          <span class="pill"><span class="d"></span>fig.01 · disagreement map</span>
-          <span class="meta">10 voices · MDS · cosine</span>
+          <span class="pill"><span class="d"></span>{t(locale, "fig_label")}</span>
+          <span class="meta">{t(locale, "fig_meta")}</span>
         </div>
         <div class="legend-row">
-          <span><i class="ld t"></i>Tenth man</span>
-          <span><i class="ld n"></i>Consensus frames</span>
+          <span><i class="ld t"></i>{t(locale, "legend_tenth")}</span>
+          <span><i class="ld n"></i>{t(locale, "legend_consensus")}</span>
         </div>
       </div>
 
       <div class="map-svg">
         <details class="map-help">
-          <summary aria-label="How to read this map">?</summary>
+          <summary aria-label="{t(locale, "map_help_aria")}">?</summary>
           <div class="map-help-popover">
-            <p class="map-help-title">How to read this map</p>
-            <p>Each point is one advisor.</p>
-            <p>The <strong>centroid</strong> at the center is the consensus zone — where the group converges.</p>
-            <p><strong>Closer</strong> to the center = more aligned with the rest.<br>
-               <strong>Farther</strong> = thinks differently.</p>
-            <p>The <strong style="color: var(--midnight-navy); background: var(--chartreuse); padding: 0 4px; border-radius: 3px;">10 · tenth-man</strong> point is the mandatory dissenter.</p>
-            <p>Concentric rings mark equal distances from the centroid.</p>
+            <p class="map-help-title">{t(locale, "map_help_title")}</p>
+            <p>{t(locale, "map_help_p1")}</p>
+            <p>{t(locale, "map_help_p2")}</p>
+            <p>{t(locale, "map_help_p3")}</p>
+            <p>{t(locale, "map_help_p4")}</p>
+            <p>{t(locale, "map_help_p5")}</p>
           </div>
         </details>
         {map_svg}
@@ -1457,24 +1669,24 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
 
       <div class="map-foot">
         <div class="cell">
-          <div class="lbl">Tenth · d</div>
+          <div class="lbl">{t(locale, "footcell_tenth_d")}</div>
           <div class="val">{tenth_distance:.3f}<span class="badge">tenth</span></div>
-          <div class="sub">forced to dissent</div>
+          <div class="sub">{t(locale, "footcell_tenth_sub")}</div>
         </div>
         <div class="cell">
-          <div class="lbl">Closest</div>
+          <div class="lbl">{t(locale, "footcell_closest")}</div>
           <div class="val">{min_frame_distance:.3f}</div>
           <div class="sub">{html_mod.escape(closest_name)}</div>
         </div>
         <div class="cell">
-          <div class="lbl">Most divergent (of the 9)</div>
+          <div class="lbl">{t(locale, "footcell_divergent")}</div>
           <div class="val">{max_frame_distance:.3f}</div>
           <div class="sub">{html_mod.escape(most_divergent_name)}</div>
         </div>
         <div class="cell">
-          <div class="lbl">Internal spread</div>
+          <div class="lbl">{t(locale, "footcell_spread")}</div>
           <div class="val">{spread_sigma:.3f}</div>
-          <div class="sub">σ across the 9 frames</div>
+          <div class="sub">{t(locale, "footcell_spread_sub")}</div>
         </div>
       </div>
     </section>
@@ -1484,13 +1696,13 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     <article class="tenth-card">
       <header class="tenth-top">
         <div>
-          <div class="tenth-tag"><span class="d"></span>The dissent of the tenth · STEEL-MAN</div>
-          <p class="tenth-lead">The mandatory dissenter's strongest case against the nine:</p>
-          <h3>Why the nine <em>might be wrong</em></h3>
+          <div class="tenth-tag"><span class="d"></span>{t(locale, "tenth_tag_label")}</div>
+          <p class="tenth-lead">{t(locale, "tenth_lead")}</p>
+          <h3>{t(locale, "tenth_h3_a")}<em>{t(locale, "tenth_h3_em")}</em></h3>
         </div>
         <div class="tenth-d-stat">
           <b>{tenth_distance:.3f}</b>
-          distance · centroid
+          {t(locale, "tenth_d_label")}
         </div>
       </header>
 
@@ -1500,7 +1712,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
       </div>
 
       <footer class="tenth-foot">
-        <span>Generated under constraint · <b>steel-man mandatory</b></span>
+        <span>{t(locale, "tenth_foot_left")}</span>
         <span>embed <b>{html_mod.escape(provider)}/{html_mod.escape(model)}</b> · ~USD {cost_estimate_usd:.2f}</span>
       </footer>
     </article>
@@ -1509,19 +1721,19 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   <section class="section">
     <div class="sec-head">
       <div class="l">
-        <div class="sec-eyebrow"><span class="n">02</span>Cognitive frames · 9 voices</div>
-        <h2>The nine, ranked by <em>distance to centroid</em></h2>
-        <p class="sub">Each frame brings a different lens: empirical, systemic, historical, analogical. The closer to the centroid, the more it represents the consensus. The farther, the more it reasons alone.</p>
+        <div class="sec-eyebrow"><span class="n">02</span>{t(locale, "section02_eyebrow")}</div>
+        <h2>{t(locale, "section02_h2_a")}<em>{t(locale, "section02_h2_em")}</em></h2>
+        <p class="sub">{t(locale, "section02_sub")}</p>
       </div>
     </div>
 
     <section class="frames">
       <div class="frames-head">
-        <span>Idx</span>
-        <span>Frame</span>
-        <span>Status</span>
-        <span>Distance</span>
-        <span style="text-align:right;">d</span>
+        <span>{t(locale, "frames_head_idx")}</span>
+        <span>{t(locale, "frames_head_frame")}</span>
+        <span>{t(locale, "frames_head_status")}</span>
+        <span>{t(locale, "frames_head_distance")}</span>
+        <span style="text-align:right;">{t(locale, "frames_head_d")}</span>
         <span></span>
       </div>
       {frame_cards_html}
@@ -1540,36 +1752,36 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     <div class="right">
       <b>~USD {cost_estimate_usd:.2f}</b><br>
       {timestamp}<br>
-      report&nbsp;<b>#{report_id}</b>
+      {t(locale, "masthead_report").lower()}&nbsp;<b>#{report_id}</b>
     </div>
   </footer>
 
   </div>
 </main>
 
-<aside class="guide" id="guide" aria-label="How to read this report">
+<aside class="guide" id="guide" aria-label="{t(locale, "guide_aria")}">
   <div class="guide-panel" role="dialog" aria-labelledby="guide-title">
     <div class="guide-panel-body">
-      <p class="kicker">Reading guide</p>
-      <h3 id="guide-title">How to approach <em>this report</em></h3>
+      <p class="kicker">{t(locale, "guide_kicker")}</p>
+      <h3 id="guide-title">{t(locale, "guide_title_a")}<em>{t(locale, "guide_title_em")}</em></h3>
       <ol>
-        <li><b>Start with the consensus, not the tenth.</b> It's what the 9 advisors agree on — the anchor of the decision.</li>
-        <li><b>The 9 advisors aren't votes.</b> They're distinct lenses on the same problem. Read the differences between them, not the majority.</li>
-        <li><b>The tenth is audit, not recommendation.</b> Its role is to attack the consensus to test if it holds. Sounding convincing is its job, not a signal it's right.</li>
-        <li><b>Isolate the tenth's attacks, not its verdict.</b> Keep the questions it opens and evaluate each against your reality — discard its conclusion if it doesn't hold.</li>
-        <li><b>Read the metrics.</b> High fragility + high tenth-man distance = weak consensus, dissent matters more. Low fragility = robust consensus, dissent is rhetorical.</li>
-        <li><b>Apply the asymmetric test.</b> If the tenth names a risk you recognize as real in your life, add it even if you don't switch sides. If you don't recognize it, discard.</li>
-        <li><b>You decide.</b> No advisor knows your full context. The report exposes tensions; the choice is yours.</li>
+        <li>{t(locale, "guide_rule_1")}</li>
+        <li>{t(locale, "guide_rule_2")}</li>
+        <li>{t(locale, "guide_rule_3")}</li>
+        <li>{t(locale, "guide_rule_4")}</li>
+        <li>{t(locale, "guide_rule_5")}</li>
+        <li>{t(locale, "guide_rule_6")}</li>
+        <li>{t(locale, "guide_rule_7")}</li>
       </ol>
     </div>
     <div class="guide-panel-foot">
-      <p class="foot">Consensus protects against the obvious error. The tenth protects against the shared one. You need both lenses — and neither replaces your judgment.</p>
-      <button type="button" class="guide-close" onclick="document.getElementById('guide').classList.remove('open')">Close</button>
+      <p class="foot">{t(locale, "guide_foot")}</p>
+      <button type="button" class="guide-close" onclick="document.getElementById('guide').classList.remove('open')">{t(locale, "guide_close")}</button>
     </div>
   </div>
   <button type="button" class="guide-toggle" onclick="document.getElementById('guide').classList.toggle('open')" aria-expanded="false">
     <span class="marker"></span>
-    How do I read this?
+    {t(locale, "guide_btn")}
   </button>
 </aside>
 
