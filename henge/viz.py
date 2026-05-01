@@ -99,6 +99,8 @@ TRANSLATIONS = {
         "page_title": "Henge · Disagreement Map",
         "screen_label": "Henge Report",
         "masthead_report": "Report",
+        "masthead_index_btn": "Past reports",
+        "masthead_index_aria": "View past reports",
         "hero_h_a": "Nine advisors aligned.",
         "hero_h_b": "The tenth must dissent.",
         "hero_dek": "Your question runs through nine cognitive frames. We measure the consensus and force a tenth to disagree with rigor.",
@@ -180,6 +182,8 @@ TRANSLATIONS = {
         "page_title": "Henge · Mapa de desacuerdo",
         "screen_label": "Reporte Henge",
         "masthead_report": "Reporte",
+        "masthead_index_btn": "Reportes anteriores",
+        "masthead_index_aria": "Ver reportes anteriores",
         "hero_h_a": "Nueve consejeros alineados.",
         "hero_h_b": "El décimo debe disentir.",
         "hero_dek": "Tu pregunta corre por nueve marcos cognitivos. Medimos el consenso y obligamos a un décimo a discrepar con rigor.",
@@ -824,6 +828,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     margin: 0 auto;
     padding: 18px 32px 14px;
     display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
     border-bottom: 1px solid rgba(0,39,80,0.08);
   }}
   .logo{{
@@ -845,6 +850,23 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   }}
   .mast-meta b{{ color: var(--midnight-navy); font-weight: 500; }}
   .mast-meta .sep{{ color: var(--fog); margin: 0 8px; }}
+  .mast-index-btn{{
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid rgba(0,39,80,0.15);
+    background: white;
+    color: var(--midnight-navy);
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: background 120ms ease, border-color 120ms ease;
+  }}
+  .mast-index-btn:hover{{
+    background: var(--midnight-navy);
+    color: var(--chartreuse);
+    border-color: var(--midnight-navy);
+  }}
+  .mast-index-btn svg{{ flex-shrink: 0; }}
 
   /* Hero */
   .hero{{
@@ -1622,6 +1644,10 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     <div class="mast-meta">
       <b>{t(locale, "masthead_report")} #{report_id}</b><span class="sep">·</span>{timestamp}<span class="sep">·</span>v0.4
     </div>
+    <a class="mast-index-btn" href="../index.html" aria-label="{t(locale, "masthead_index_aria")}">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 3.5h12M2 8h12M2 12.5h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span>{t(locale, "masthead_index_btn")}</span>
+    </a>
   </header>
 
   <section class="hero">
