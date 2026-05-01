@@ -28,15 +28,43 @@ from datetime import datetime
 # B) override with HENGE_LOCALE=en|es (env var)
 
 _SPANISH_RE = re.compile(
+    # Spanish-only characters and punctuation
     r"[¿¡áéíóúñü]|"
-    r"\b(qué|cómo|cuál|cuándo|dónde|por\s?qué|si|debo|debería|tengo|tiene|"
-    r"hacer|saber|nuestro|nuestra|nosotros|ustedes|ellos|ellas|aquí|allí|"
-    r"esto|eso|aquello|para|porque|cuando|donde|conmigo|conviene)\b",
+    # Function words (hard to confuse with English)
+    r"\b(qué|cómo|cuál|cuáles|cuándo|dónde|por\s?qué|para\s?qué|si|sí|"
+    r"debo|debería|debería|tengo|tiene|tienen|tenía|hacer|saber|"
+    r"nuestro|nuestra|nuestros|nuestras|nosotros|nosotras|ustedes|"
+    r"ellos|ellas|aquí|allí|allá|esto|eso|aquello|esta|este|estas|estos|"
+    r"para|porque|pues|cuando|donde|cómo|también|además|después|antes|"
+    r"entonces|ahora|todavía|aún|conmigo|contigo|"
+    # Content words common in decision questions
+    r"auto|autos|carro|carros|coche|coches|moto|casa|hogar|piso|"
+    r"nuevo|nueva|nuevos|nuevas|usado|usada|usados|usadas|viejo|vieja|"
+    r"comprar|vender|compré|vendí|alquilar|arrendar|arriendo|"
+    r"trabajo|trabajar|empleo|carrera|jubilación|sueldo|salario|"
+    r"hijo|hija|hijos|hijas|padre|madre|esposa|esposo|pareja|familia|"
+    r"dinero|plata|ahorros|inversión|deuda|crédito|hipoteca|"
+    r"vida|salud|enfermedad|muerte|futuro|pasado|presente|"
+    r"bueno|buena|buenos|buenas|malo|mala|mejor|peor|grande|pequeño|"
+    r"mucho|mucha|muchos|muchas|poco|poca|pocos|pocas|"
+    r"todo|toda|todos|todas|nada|alguien|nadie|algo|"
+    r"oportunidad|decisión|riesgo|negocio|empresa|emprender|"
+    r"viaje|viajar|mudarme|mudarse|emigrar|"
+    r"semana|mes|meses|año|años|día|días|hora|horas|"
+    r"sin|con|hacia|desde|hasta|según|durante|"
+    r"convieneme|conviene|deber|deberé)\b|"
+    # Spanish-only suffixes (catch verb/adjective/noun endings)
+    r"\w+(ción|cciones|mente|dad|dades|tud|tudes|isimo|ísima)\b",
     re.IGNORECASE,
 )
 _ENGLISH_RE = re.compile(
-    r"\b(should|would|could|the|i|my|how|what|when|where|why|which|do|does|did|"
-    r"is|am|are|was|were|will|can|may|might|must|have|has|had|been|that|this)\b",
+    r"\b(should|would|could|the|i|my|how|what|when|where|why|which|whom|whose|"
+    r"do|does|did|is|am|are|was|were|will|wo|won't|can|cannot|may|might|must|"
+    r"have|has|had|been|that|this|these|those|or|and|but|with|from|into|onto|"
+    r"yes|no|too|very|much|many|few|some|any|all|every|each|other|another|"
+    r"buy|buying|sell|selling|new|used|old|car|house|home|job|work|money|"
+    r"life|health|family|future|business|invest|investment|risk|"
+    r"week|month|year|day|hour|night)\b",
     re.IGNORECASE,
 )
 
