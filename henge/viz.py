@@ -491,7 +491,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
         for i, (title, body) in enumerate(tenth_modes, start=1):
             mode_cards.append(
                 f'<div class="mode">'
-                f'<div class="ord">Mode · {i:02d}</div>'
+                f'<div class="ord">§ {i:02d}</div>'
                 f'<h5>{html_mod.escape(title)}</h5>'
                 f'<p>{html_mod.escape(body)}</p>'
                 f'</div>'
@@ -514,7 +514,8 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     <article class="consensus-card">
       <header class="consensus-top">
         <div>
-          <div class="consensus-tag"><span class="d"></span>Σ · 9 advisors · {html_mod.escape(verdict_short.upper())}</div>
+          <div class="consensus-tag"><span class="d"></span>The consensus of the 9 · {html_mod.escape(verdict_short.upper())}</div>
+          <p class="consensus-lead">What the nine advisors agree on, in one line:</p>
           <h3>{html_mod.escape(consensus_title)}</h3>
         </div>
         <div class="consensus-d">
@@ -538,7 +539,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>TenthAI · Disagreement Map</title>
+<title>Henge · Disagreement Map</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,450;9..40,500;9..40,600&family=Fraunces:opsz,wght@9..144,400;9..144,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -619,7 +620,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     position: absolute; inset: 0;
     background-image: url('assets/header-painting.jpg');
     background-size: cover;
-    background-position: center 40%;
+    background-position: center 60%;
     z-index: -2;
   }}
   .hero::after{{
@@ -630,11 +631,11 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
       linear-gradient(90deg, rgba(0,16,51,0.55) 0%, rgba(0,16,51,0.10) 50%);
   }}
   .hero-inner{{
-    padding: 56px 40px 28px;
+    padding: 40px;
     display: grid;
     grid-template-columns: 1.4fr 1fr;
     gap: 40px;
-    align-items: end;
+    align-items: center;
   }}
   h1.hero-h{{
     margin: 0 0 14px;
@@ -722,6 +723,20 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     margin: 12px 0 0;
     font-size: 16px; color: var(--storm); letter-spacing: -0.16px;
   }}
+  .question-pull{{
+    margin: 20px 0 0;
+    padding: 6px 0 6px 22px;
+    border-left: 3px solid var(--chartreuse);
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 24px;
+    line-height: 1.35;
+    letter-spacing: -0.22px;
+    color: var(--midnight-navy);
+    text-wrap: balance;
+    max-width: 64ch;
+  }}
 
   /* Map card */
   .map-card{{
@@ -801,17 +816,12 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
 
   /* Consensus card (navy-themed) */
   .consensus-card{{
-    background: var(--pure);
+    background: linear-gradient(180deg, var(--ice-veil) 0%, var(--pure) 100%);
     border-radius: 20px;
     box-shadow: var(--shadow-xl);
     overflow: hidden;
     margin-top: 24px;
     position: relative;
-  }}
-  .consensus-card::before{{
-    content: "";
-    position: absolute; left: 0; top: 0; bottom: 0;
-    width: 4px; background: var(--midnight-navy);
   }}
   .consensus-top{{
     display: grid; grid-template-columns: 1fr auto;
@@ -828,6 +838,12 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     margin-bottom: 12px;
   }}
   .consensus-tag .d{{ width: 5px; height: 5px; border-radius: 9999px; background: var(--chartreuse); }}
+  .consensus-lead{{
+    margin: 0 0 8px;
+    font-size: 14px;
+    color: var(--storm);
+    letter-spacing: -0.09px;
+  }}
   .consensus-top h3{{
     margin: 0;
     font-family: var(--serif); font-weight: 400;
@@ -838,10 +854,11 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   }}
   .consensus-d{{
     text-align: right;
-    background: var(--ghost-canvas);
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(4px);
     border-radius: 16px;
     padding: 14px 18px;
-    box-shadow: rgba(0,39,80,0.04) 0 0 0 1px;
+    box-shadow: rgba(0,39,80,0.06) 0 0 0 1px;
     font-family: var(--mono); font-size: 11px;
     color: var(--slate-ink);
     text-transform: uppercase; letter-spacing: 0.04em;
@@ -923,6 +940,12 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     margin-bottom: 12px;
   }}
   .tenth-tag .d{{ width: 5px; height: 5px; border-radius: 9999px; background: var(--chartreuse); }}
+  .tenth-lead{{
+    margin: 0 0 8px;
+    font-size: 14px;
+    color: var(--storm);
+    letter-spacing: -0.09px;
+  }}
   .tenth-top h3{{
     margin: 0;
     font-family: var(--serif); font-weight: 400;
@@ -1129,6 +1152,193 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     color: var(--midnight-navy);
   }}
 
+  /* Map help "?" — floating inside the map card */
+  .map-help{{
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 10;
+  }}
+  .map-help summary{{
+    list-style: none;
+    cursor: pointer;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--pure);
+    color: var(--slate-ink);
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 16px; font-weight: 500;
+    display: flex; align-items: center; justify-content: center;
+    user-select: none;
+    transition: all .15s ease;
+    box-shadow: rgba(0,39,80,0.04) 0 0 0 1px, rgba(0,39,80,0.10) 0 2px 6px -2px;
+  }}
+  .map-help summary::-webkit-details-marker{{ display: none; }}
+  .map-help summary:hover,
+  .map-help[open] summary{{
+    background: var(--midnight-navy);
+    color: var(--chartreuse);
+    box-shadow: rgba(0,39,80,0.20) 0 4px 10px -2px;
+  }}
+  .map-help-popover{{
+    position: absolute;
+    top: 38px; right: 0;
+    width: 320px;
+    background: var(--pure);
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow-md), rgba(0,39,80,0.06) 0 12px 24px -8px;
+  }}
+  .map-help-popover .map-help-title{{
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--slate-ink);
+    font-weight: 500;
+    margin: 0 0 10px;
+  }}
+  .map-help-popover p{{
+    margin: 0 0 10px;
+    font-size: 14px; line-height: 1.5;
+    color: var(--midnight-navy);
+  }}
+  .map-help-popover p:last-child{{ margin-bottom: 0; }}
+  .map-help-popover strong{{ font-weight: 600; }}
+
+  /* Reading guide — fixed floating bottom-right */
+  .guide{{
+    position: fixed;
+    right: 24px; bottom: 24px;
+    z-index: 50;
+    font-family: var(--sans);
+    display: flex; flex-direction: column;
+    align-items: flex-end;
+  }}
+  .guide-toggle{{
+    appearance: none; -webkit-appearance: none;
+    border: 0;
+    background: var(--midnight-navy);
+    color: var(--chartreuse);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 12px 18px;
+    border-radius: 9999px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 10px;
+    box-shadow:
+      rgba(24,37,66,0.32) 0 1px 3px 0,
+      rgba(24,37,66,0.44) 0 12px 24px -12px,
+      rgba(219,247,255,0.48) 0 0.5px 0.5px 0 inset;
+    transition: transform .15s ease, box-shadow .15s ease;
+    outline: none;
+  }}
+  .guide-toggle:hover{{
+    transform: translateY(-1px);
+    box-shadow:
+      rgba(24,37,66,0.40) 0 1px 3px 0,
+      rgba(24,37,66,0.55) 0 16px 28px -12px,
+      rgba(219,247,255,0.48) 0 0.5px 0.5px 0 inset;
+  }}
+  .guide-toggle:focus-visible{{
+    box-shadow: 0 0 0 3px rgba(208,241,0,0.45), rgba(24,37,66,0.44) 0 12px 24px -12px;
+  }}
+  .guide-toggle .marker{{
+    width: 7px; height: 7px; border-radius: 9999px;
+    background: var(--chartreuse);
+    box-shadow: 0 0 0 3px rgba(208,241,0,0.25);
+  }}
+  .guide-panel{{
+    display: none;
+    width: min(380px, calc(100vw - 48px));
+    max-height: min(72vh, 640px);
+    background: var(--pure);
+    border-radius: 16px;
+    box-shadow: var(--shadow-xl);
+    margin-bottom: 12px;
+    overflow: hidden;
+    flex-direction: column;
+  }}
+  .guide.open .guide-panel{{ display: flex; }}
+  .guide-panel-body{{
+    overflow-y: auto;
+    padding: 24px 24px 4px;
+    scrollbar-width: thin;
+  }}
+  .guide-panel-foot{{
+    flex-shrink: 0;
+    padding: 14px 24px 18px;
+    border-top: 1px solid rgba(0,39,80,0.08);
+    background: var(--ghost-canvas);
+  }}
+  .guide-panel .kicker{{
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--slate-ink);
+    margin: 0 0 8px;
+  }}
+  .guide-panel h3{{
+    margin: 0 0 4px;
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 22px;
+    letter-spacing: -0.22px;
+    line-height: 1.15;
+    color: var(--midnight-navy);
+  }}
+  .guide-panel h3 em{{ font-style: italic; color: var(--midnight-navy); }}
+  .guide-panel ol{{
+    margin: 18px 0 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: g;
+  }}
+  .guide-panel ol li{{
+    counter-increment: g;
+    position: relative;
+    padding: 12px 0 12px 30px;
+    border-top: 1px solid rgba(0,39,80,0.06);
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--storm);
+  }}
+  .guide-panel ol li:first-child{{ border-top: none; }}
+  .guide-panel ol li::before{{
+    content: counter(g, decimal-leading-zero);
+    position: absolute;
+    left: 0; top: 12px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--slate-ink);
+    letter-spacing: 0.06em;
+  }}
+  .guide-panel ol li b{{ color: var(--midnight-navy); font-weight: 600; }}
+  .guide-panel .foot{{
+    margin: 0 0 12px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--storm);
+  }}
+  .guide-close{{
+    appearance: none; -webkit-appearance: none;
+    background: none; border: 0; cursor: pointer;
+    color: var(--slate-ink);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0;
+    outline: none;
+  }}
+  .guide-close:hover{{ color: var(--midnight-navy); }}
+
   /* Colophon */
   footer.colophon{{
     max-width: 1200px;
@@ -1164,10 +1374,10 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
 </style>
 </head>
 <body>
-<main data-screen-label="TenthAI Report">
+<main data-screen-label="Henge Report">
 
   <header class="masthead">
-    <div class="logo"><span class="mk">10</span> TenthAI</div>
+    <div class="logo"><span class="mk">10</span> Henge</div>
     <div class="mast-meta">
       <b>Report #{report_id}</b><span class="sep">·</span>{timestamp}<span class="sep">·</span>v0.4
     </div>
@@ -1213,7 +1423,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
       <div class="l">
         <div class="sec-eyebrow"><span class="n">01</span>Report · #{report_id}</div>
         <h2>The question <em>the nine answered</em></h2>
-        <p class="sub">{question_safe}</p>
+        <blockquote class="question-pull">{question_safe}</blockquote>
       </div>
     </div>
 
@@ -1230,6 +1440,18 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
       </div>
 
       <div class="map-svg">
+        <details class="map-help">
+          <summary aria-label="How to read this map">?</summary>
+          <div class="map-help-popover">
+            <p class="map-help-title">How to read this map</p>
+            <p>Each point is one advisor.</p>
+            <p>The <strong>centroid</strong> at the center is the consensus zone — where the group converges.</p>
+            <p><strong>Closer</strong> to the center = more aligned with the rest.<br>
+               <strong>Farther</strong> = thinks differently.</p>
+            <p>The <strong style="color: var(--midnight-navy); background: var(--chartreuse); padding: 0 4px; border-radius: 3px;">10 · tenth-man</strong> point is the mandatory dissenter.</p>
+            <p>Concentric rings mark equal distances from the centroid.</p>
+          </div>
+        </details>
         {map_svg}
       </div>
 
@@ -1262,7 +1484,8 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     <article class="tenth-card">
       <header class="tenth-top">
         <div>
-          <div class="tenth-tag"><span class="d"></span>Frame 10 · Tenth-man</div>
+          <div class="tenth-tag"><span class="d"></span>The dissent of the tenth · STEEL-MAN</div>
+          <p class="tenth-lead">The mandatory dissenter's strongest case against the nine:</p>
           <h3>Why the nine <em>might be wrong</em></h3>
         </div>
         <div class="tenth-d-stat">
@@ -1307,7 +1530,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
 
   <footer class="colophon">
     <div>
-      <b>TenthAI v0.4</b><br>
+      <b>Henge v0.4</b><br>
       classical MDS · cosine<br>
       embed · {html_mod.escape(provider)}/{html_mod.escape(model)}
     </div>
@@ -1324,10 +1547,49 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   </div>
 </main>
 
+<aside class="guide" id="guide" aria-label="How to read this report">
+  <div class="guide-panel" role="dialog" aria-labelledby="guide-title">
+    <div class="guide-panel-body">
+      <p class="kicker">Reading guide</p>
+      <h3 id="guide-title">How to approach <em>this report</em></h3>
+      <ol>
+        <li><b>Start with the consensus, not the tenth.</b> It's what the 9 advisors agree on — the anchor of the decision.</li>
+        <li><b>The 9 advisors aren't votes.</b> They're distinct lenses on the same problem. Read the differences between them, not the majority.</li>
+        <li><b>The tenth is audit, not recommendation.</b> Its role is to attack the consensus to test if it holds. Sounding convincing is its job, not a signal it's right.</li>
+        <li><b>Isolate the tenth's attacks, not its verdict.</b> Keep the questions it opens and evaluate each against your reality — discard its conclusion if it doesn't hold.</li>
+        <li><b>Read the metrics.</b> High fragility + high tenth-man distance = weak consensus, dissent matters more. Low fragility = robust consensus, dissent is rhetorical.</li>
+        <li><b>Apply the asymmetric test.</b> If the tenth names a risk you recognize as real in your life, add it even if you don't switch sides. If you don't recognize it, discard.</li>
+        <li><b>You decide.</b> No advisor knows your full context. The report exposes tensions; the choice is yours.</li>
+      </ol>
+    </div>
+    <div class="guide-panel-foot">
+      <p class="foot">Consensus protects against the obvious error. The tenth protects against the shared one. You need both lenses — and neither replaces your judgment.</p>
+      <button type="button" class="guide-close" onclick="document.getElementById('guide').classList.remove('open')">Close</button>
+    </div>
+  </div>
+  <button type="button" class="guide-toggle" onclick="document.getElementById('guide').classList.toggle('open')" aria-expanded="false">
+    <span class="marker"></span>
+    How do I read this?
+  </button>
+</aside>
+
 <script>
   document.querySelectorAll('.frame').forEach(f => {{
     f.addEventListener('click', () => f.classList.toggle('open'));
   }});
+  (function(){{
+    var g = document.getElementById('guide');
+    var btn = g.querySelector('.guide-toggle');
+    btn.addEventListener('click', function(){{
+      btn.setAttribute('aria-expanded', g.classList.contains('open') ? 'true' : 'false');
+    }});
+    document.addEventListener('keydown', function(e){{
+      if(e.key === 'Escape' && g.classList.contains('open')){{
+        g.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+      }}
+    }});
+  }})();
 </script>
 </body>
 </html>"""

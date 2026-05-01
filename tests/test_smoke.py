@@ -45,7 +45,7 @@ def test_html_renders(synthetic_embeddings_10):
     assert isinstance(html, str) and len(html) > 1000
     lower = html.lower()
     assert "<html" in lower
-    assert "tenthai" in lower
+    assert "henge" in lower
     assert "tenth-man" in lower
     # All 9 frame names should be present
     for i in range(9):
