@@ -1,6 +1,6 @@
-"""Persistence for TenthAI reports — HTML + JSON per run + browseable index.
+"""Persistence for Henge reports — HTML + JSON per run + browseable index.
 
-Layout (under TENTHAI_REPORTS_DIR or ~/.tenthai/reports):
+Layout (under HENGE_REPORTS_DIR or ~/.henge/reports):
 
     20260430-143559_should-i-leave-pm-job/
         report.html       # full editorial visualization
@@ -18,7 +18,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-REPORTS_DIR = Path(os.environ.get("TENTHAI_REPORTS_DIR", "~/.tenthai/reports")).expanduser()
+REPORTS_DIR = Path(os.environ.get("HENGE_REPORTS_DIR", "~/.henge/reports")).expanduser()
 
 
 def slugify(question: str, max_len: int = 60) -> str:
@@ -159,7 +159,7 @@ def _index_html(records: list) -> str:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TenthAI · Decision history</title>
+<title>Henge · Decision history</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,0..100;1,9..144,300..700,0..100&family=Inter+Tight:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -344,7 +344,7 @@ def _index_html(records: list) -> str:
   <div class="mast">
     <span class="rule"></span>
     <span class="dot"></span>
-    <b>TenthAI</b>
+    <b>Henge</b>
     <span class="sep">·</span>
     <span>Decision history</span>
   </div>

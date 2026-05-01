@@ -2,8 +2,8 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from tenthai.agents import run_agents, TENTH_MAN
-from tenthai.embed import project_mds
+from henge.agents import run_agents, TENTH_MAN
+from henge.embed import project_mds
 
 
 @pytest.mark.asyncio

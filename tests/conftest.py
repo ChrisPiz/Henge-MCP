@@ -1,4 +1,4 @@
-"""Shared mocks for TenthAI test suite.
+"""Shared mocks for Henge test suite.
 
 Why mock heavily: tests must run in <5s and never hit real APIs (no tokens spent).
 """

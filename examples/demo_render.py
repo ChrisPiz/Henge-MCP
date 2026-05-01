@@ -19,11 +19,11 @@ from pathlib import Path
 
 import numpy as np
 
-# Make tenthai importable when running the script directly.
+# Make henge importable when running the script directly.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from tenthai.embed import project_mds  # noqa: E402
-from tenthai.viz import render  # noqa: E402
+from henge.embed import project_mds  # noqa: E402
+from henge.viz import render  # noqa: E402
 
 
 QUESTION = (

@@ -1,4 +1,4 @@
-"""TenthAI MCP server. Exposes 1 tool: decide(question, context?).
+"""Henge server. Exposes 1 tool: decide(question, context?).
 
 Boots only after validating Anthropic + embed provider keys with a minimal ping.
 Fail-fast on auth so the developer sees a clear error in T+5s instead of T+60s
@@ -25,7 +25,7 @@ from .viz import consensus_verdict, render
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_PROJECT_ROOT / ".env")
 
-mcp = FastMCP("tenthai")
+mcp = FastMCP("henge")
 
 
 def _validate_keys_at_startup():
@@ -91,7 +91,7 @@ def _validate_keys_at_startup():
                 )
 
     if errors:
-        print("✗ TenthAI startup falló:", file=sys.stderr)
+        print("✗ Henge startup falló:", file=sys.stderr)
         for e in errors:
             print(f"  - {e}", file=sys.stderr)
         sys.exit(1)

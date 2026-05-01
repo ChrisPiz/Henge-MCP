@@ -5,7 +5,7 @@ import pytest
 
 def test_prompts_loaded_at_startup():
     """Los 10 prompts cargan al import. Ninguno vacío. Single source of truth."""
-    from tenthai.agents import PROMPTS
+    from henge.agents import PROMPTS
 
     expected_keys = {
         "empirical", "historical", "first-principles", "analogical",
@@ -23,8 +23,8 @@ def test_html_renders(synthetic_embeddings_10):
     render() is now pure — it returns a string instead of writing to disk.
     Persistence + browser-open live in server.py via storage.write_record.
     """
-    from tenthai.embed import project_mds
-    from tenthai import viz
+    from henge.embed import project_mds
+    from henge import viz
 
     proj = project_mds(synthetic_embeddings_10)
 
@@ -45,7 +45,7 @@ def test_html_renders(synthetic_embeddings_10):
     assert isinstance(html, str) and len(html) > 1000
     lower = html.lower()
     assert "<html" in lower
-    assert "tenthai" in lower
+    assert "henge" in lower
     assert "tenth-man" in lower
     # All 9 frame names should be present
     for i in range(9):
@@ -54,10 +54,10 @@ def test_html_renders(synthetic_embeddings_10):
 
 def test_storage_persists_and_indexes(tmp_path, monkeypatch):
     """write_record + write_index produce a browseable ledger of past runs."""
-    monkeypatch.setenv("TENTHAI_REPORTS_DIR", str(tmp_path))
+    monkeypatch.setenv("HENGE_REPORTS_DIR", str(tmp_path))
     # Re-import storage so REPORTS_DIR picks up the patched env var.
     import importlib
-    from tenthai import storage as storage_module
+    from henge import storage as storage_module
     storage = importlib.reload(storage_module)
 
     rid = storage.make_report_id("Should I ship this Friday?")
@@ -89,7 +89,7 @@ def test_storage_persists_and_indexes(tmp_path, monkeypatch):
 
 def test_consensus_verdict_three_states():
     """Verdict picks the right state for tight/fragile/divided shapes."""
-    from tenthai.viz import consensus_verdict
+    from henge.viz import consensus_verdict
 
     # 9 tight (max 0.08), tenth moderate (0.10) → aligned-stable
     v = consensus_verdict(tenth_distance=0.10, max_frame_distance=0.08)
@@ -112,7 +112,7 @@ def test_voyage_failure_returns_structured_error(monkeypatch):
 
     Sin esto, MCP server propaga stack trace cruda → confusión del developer.
     """
-    from tenthai import embed
+    from henge import embed
 
     def boom(*args, **kwargs):
         raise RuntimeError("Simulated voyage 500")
@@ -138,7 +138,7 @@ def test_startup_validates_keys_missing(monkeypatch, capsys):
     populated them, otherwise the validator sees the keys from .env.
     """
     # Import first so load_dotenv has already run and pollued os.environ.
-    from tenthai.server import _validate_keys_at_startup
+    from henge.server import _validate_keys_at_startup
 
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)

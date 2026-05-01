@@ -459,7 +459,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>TenthAI · {question_safe[:60]}</title>
+<title>Henge · {question_safe[:60]}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,0..100;1,9..144,300..700,0..100&family=Inter+Tight:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -1246,13 +1246,13 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
 </style>
 </head>
 <body>
-<main class="page" data-screen-label="TenthAI Report">
+<main class="page" data-screen-label="Henge Report">
 
   <header>
     <div class="mast">
       <span class="rule"></span>
       <span class="dot"></span>
-      <b>TenthAI</b>
+      <b>Henge</b>
       <span class="sep">·</span>
       <span>Disagreement Map</span>
       <span class="sep">·</span>
@@ -1351,7 +1351,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
 
   <footer class="colophon">
     <div>
-      <b>TenthAI</b><br/>
+      <b>Henge</b><br/>
       classical MDS · cosine distance<br/>
       embed: {html_mod.escape(provider)}/{html_mod.escape(model)}
     </div>

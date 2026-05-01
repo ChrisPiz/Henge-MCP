@@ -1,18 +1,18 @@
-# TenthAI MCP · Structured Dissent for AI Agents
+# Henge · Structured Dissent for AI Agents
 
-TenthAI MCP is a Model Context Protocol server that helps AI agents avoid premature consensus.
+Henge is a Model Context Protocol server that helps AI agents avoid premature consensus.
 
 It runs multiple cognitive frames over a decision, measures alignment, and generates structured dissent only when needed.
 
 > Agreement is not a signal. It's just coherent noise — unless you measure it.
 
-**[→ Live demo report](https://raw.githack.com/ChrisPiz/TenthAI-MCP/main/docs/demo.html)** — see what TenthAI returns for a real founder decision.
+**[→ Live demo report](https://raw.githack.com/ChrisPiz/Henge/main/docs/demo.html)** — see what Henge returns for a real founder decision.
 
 ---
 
 ## What it does
 
-TenthAI MCP gives compatible AI clients a tool for decision stress-testing.
+Henge gives compatible AI clients a tool for decision stress-testing.
 
 Instead of asking one model for one answer, it:
 
@@ -26,7 +26,7 @@ Instead of asking one model for one answer, it:
 
 ## Why MCP
 
-MCP makes TenthAI available as a reusable reasoning tool inside:
+MCP makes Henge available as a reusable reasoning tool inside:
 
 - Claude Desktop
 - Cursor
@@ -52,20 +52,20 @@ The goal is to give it a specialized tool for:
 Paste this prompt into Claude Code and let it do the install for you:
 
 ```
-Install TenthAI MCP from https://github.com/ChrisPiz/TenthAI-MCP into ~/TenthAI-MCP.
+Install Henge from https://github.com/ChrisPiz/Henge into ~/Henge.
 
 Steps:
-1. git clone the repo into ~/TenthAI-MCP
+1. git clone the repo into ~/Henge
 2. cd into it, create a Python 3.11+ venv at .venv, activate it, pip install -r requirements.txt
 3. Ask me for my ANTHROPIC_API_KEY and OPENAI_API_KEY (one at a time, don't print them back). Write them into .env using cp .env.example .env as the starting point.
-4. Verify the keys by running `python -m tenthai.server` for ~5 seconds — it must print "✓ keys validated" to stderr. Kill it after that confirmation.
-5. Register globally: `claude mcp add -s user tenthai "$HOME/TenthAI-MCP/.venv/bin/python" -- -m tenthai.server`
-6. Confirm with `claude mcp list` — the tenthai row must show ✓ Connected.
+4. Verify the keys by running `python -m henge.server` for ~5 seconds — it must print "✓ keys validated" to stderr. Kill it after that confirmation.
+5. Register globally: `claude mcp add -s user henge "$HOME/Henge/.venv/bin/python" -- -m henge.server`
+6. Confirm with `claude mcp list` — the henge row must show ✓ Connected.
 7. Create the slash command at ~/.claude/commands/decide.md with this content:
    ---
-   description: Invokes TenthAI — disagreement map of 9 advisors + 1 dissenter.
+   description: Invokes Henge — disagreement map of 9 advisors + 1 dissenter.
    ---
-   Use the `decide` MCP tool from the `tenthai` server to analyze: $ARGUMENTS. When the JSON returns: cite viz_path, summarize the consensus first, list the 9 advisors' conclusions, then quote the tenth-man verbatim.
+   Use the `decide` MCP tool from the `henge` server to analyze: $ARGUMENTS. When the JSON returns: cite viz_path, summarize the consensus first, list the 9 advisors' conclusions, then quote the tenth-man verbatim.
 
 After step 6, tell me to restart Claude Code and try `/decide should I take the new job?`
 ```
@@ -80,8 +80,8 @@ After Claude Code finishes, restart it once so the new MCP server is picked up.
 **1. Clone and install dependencies**
 
 ```bash
-git clone https://github.com/ChrisPiz/TenthAI-MCP.git
-cd TenthAI-MCP
+git clone https://github.com/ChrisPiz/Henge.git
+cd Henge
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
@@ -99,14 +99,14 @@ cp .env.example .env
 Verify keys:
 
 ```bash
-python -m tenthai.server   # should print "✓ keys validated" then wait for stdio
+python -m henge.server   # should print "✓ keys validated" then wait for stdio
 ```
 
 **3. Register the MCP server with Claude Code**
 
 ```bash
-claude mcp add -s user tenthai \
-  "$(pwd)/.venv/bin/python" -- -m tenthai.server
+claude mcp add -s user henge \
+  "$(pwd)/.venv/bin/python" -- -m henge.server
 ```
 
 The `-s user` flag makes it available globally (any project). Drop the flag to scope it to the current directory only.
@@ -116,15 +116,15 @@ Or, if you prefer editing config by hand, add to `~/.claude.json` (or your clien
 ```json
 {
   "mcpServers": {
-    "tenthai": {
-      "command": "/absolute/path/to/TenthAI-MCP/.venv/bin/python",
-      "args": ["-m", "tenthai.server"]
+    "henge": {
+      "command": "/absolute/path/to/Henge/.venv/bin/python",
+      "args": ["-m", "henge.server"]
     }
   }
 }
 ```
 
-Restart Claude Code (or your MCP client). Verify with `claude mcp list` — `tenthai` should report `✓ Connected`.
+Restart Claude Code (or your MCP client). Verify with `claude mcp list` — `henge` should report `✓ Connected`.
 
 **4. Optional: add a `/decide` slash command**
 
@@ -132,9 +132,9 @@ Restart Claude Code (or your MCP client). Verify with `claude mcp list` — `ten
 mkdir -p ~/.claude/commands
 cat > ~/.claude/commands/decide.md <<'MD'
 ---
-description: Invokes TenthAI — disagreement map of 9 advisors + 1 dissenter.
+description: Invokes Henge — disagreement map of 9 advisors + 1 dissenter.
 ---
-Use the `decide` MCP tool from the `tenthai` server to analyze: $ARGUMENTS
+Use the `decide` MCP tool from the `henge` server to analyze: $ARGUMENTS
 
 When the JSON returns: cite `viz_path`, summarize the consensus first,
 list the 9 advisors' conclusions, then quote the tenth-man verbatim.
@@ -154,15 +154,15 @@ pytest tests/ -v
 
 ### Where reports live
 
-Every invocation persists to `~/.tenthai/reports/<id>/` with both a `report.html` (the editorial visualization) and a `report.json` (raw data: question, context, 10 responses, distances, summary, cost). A browseable `index.html` lists every past run, newest first.
+Every invocation persists to `~/.henge/reports/<id>/` with both a `report.html` (the editorial visualization) and a `report.json` (raw data: question, context, 10 responses, distances, summary, cost). A browseable `index.html` lists every past run, newest first.
 
-Override the location with `TENTHAI_REPORTS_DIR=/path/to/dir` in your `.env` if you want them elsewhere. There is no auto-purge — you decide when to clean up.
+Override the location with `HENGE_REPORTS_DIR=/path/to/dir` in your `.env` if you want them elsewhere. There is no auto-purge — you decide when to clean up.
 
 ---
 
 ## Core principle
 
-TenthAI does not blindly contradict.
+Henge does not blindly contradict.
 
 If there is no real consensus, forcing disagreement only adds noise.
 
@@ -172,7 +172,7 @@ The tenth-man activates when the system detects meaningful alignment between the
 
 ## Available tool
 
-### `tenthai_analyze`
+### `henge_analyze`
 
 Runs a structured dissent analysis over a user question.
 
@@ -228,7 +228,7 @@ Each advisor runs a distinct reasoning frame. The point isn't to add ten voices 
 
 ## Compared to simple prompting
 
-| Approach | Problem | TenthAI MCP |
+| Approach | Problem | Henge |
 |----------|---------|-------------|
 | Single prompt | One confident answer | Multiple frames |
 | Multi-agent debate | Often noisy | Measures agreement |
@@ -251,7 +251,7 @@ Each advisor runs a distinct reasoning frame. The point isn't to add ten voices 
 
 ## Not goals
 
-TenthAI MCP is not:
+Henge is not:
 
 - a chatbot
 - a debate simulator
@@ -268,7 +268,7 @@ User asks:
 
 > Should I hire someone for my 3D printing business?
 
-TenthAI MCP may produce:
+Henge may produce:
 
 > The nine frames converge around caution:
 > validate demand before creating a fixed cost.
