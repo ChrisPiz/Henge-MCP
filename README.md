@@ -1,5 +1,6 @@
 # TenthAI MCP · Structured Dissent for AI Agents
 
+[![SafeSkill 50/100](https://img.shields.io/badge/SafeSkill-50%2F100_Use%20with%20Caution-orange)](https://safeskill.dev/scan/chrispiz-tenthai-mcp)
 TenthAI MCP is a Model Context Protocol server that helps AI agents avoid premature consensus.
 
 It runs multiple cognitive frames over a decision, measures alignment, and generates structured dissent only when needed.
