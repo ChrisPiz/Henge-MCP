@@ -12,6 +12,37 @@ Henge is an MCP server that measures AI consensus and forces a steel-man counter
 
 ---
 
+## Quickstart · Claude Code (30s)
+
+Paste this prompt into Claude Code and it self-installs by running a deterministic shell script — no LLM step-following, no drift:
+
+````
+Install Henge from https://github.com/ChrisPiz/Henge. Idempotent flow:
+
+1. Clone shallow (or pull if already there):
+   git clone --single-branch --depth 1 https://github.com/ChrisPiz/Henge.git ~/Henge \
+     || (cd ~/Henge && git pull --ff-only)
+
+2. cd ~/Henge && cp -n .env.example .env
+
+3. Ask me for ANTHROPIC_API_KEY and OPENAI_API_KEY one at a time. When I paste each one, update the matching line in ~/Henge/.env in-place. Confirm only the LENGTH back to me ("got it, 108 chars") — never echo the value to the chat or any other tool.
+
+4. Run the setup script — it handles Python ≥3.11 (with a 15-minute pyenv install fallback if missing), the venv, the editable install, the cross-cwd sanity check, key validation, MCP registration for every host installed (Claude Code, Claude Desktop, Cursor), and the /decide slash command:
+   cd ~/Henge && ./setup
+
+5. When the script prints "✓ Henge installed.", tell me to fully quit Claude Code (close ALL terminals running `claude`) and reopen, then try `/decide should I take the new job?`.
+````
+
+Restart Claude Code fully when it's done, then try:
+
+```
+/decide should I take the new job?
+```
+
+For Claude Desktop, Cursor or any other MCP host, see [Manual install](#manual-install) at the bottom.
+
+---
+
 ## The problem
 
 AI systems don't fail because they lack intelligence.
@@ -56,60 +87,157 @@ Henge does not simulate debate. It analyzes the structure of thought, then quant
 
 ---
 
-## Quickstart (30s)
+## Before you install
 
-Paste this prompt into Claude Code and it self-installs by running a deterministic shell script — no LLM step-following, no drift:
+Quick checklist so the install doesn't surprise you:
 
-````
-Install Henge from https://github.com/ChrisPiz/Henge. Idempotent flow:
-
-1. Clone shallow (or pull if already there):
-   git clone --single-branch --depth 1 https://github.com/ChrisPiz/Henge.git ~/Henge \
-     || (cd ~/Henge && git pull --ff-only)
-
-2. cd ~/Henge && cp -n .env.example .env
-
-3. Ask me for ANTHROPIC_API_KEY and OPENAI_API_KEY one at a time. When I paste each one, update the matching line in ~/Henge/.env in-place. Confirm only the LENGTH back to me ("got it, 108 chars") — never echo the value to the chat or any other tool.
-
-4. Run the setup script — it handles Python ≥3.11 (with a 15-minute pyenv install fallback if missing), the venv, the editable install, the cross-cwd sanity check, key validation, MCP registration for every host installed (Claude Code, Claude Desktop, Cursor), and the /decide slash command:
-   cd ~/Henge && ./setup
-
-5. When the script prints "✓ Henge installed.", tell me to fully quit Claude Code (close ALL terminals running `claude`) and reopen, then try `/decide should I take the new job?`.
-````
-
-The `setup` script is the source of truth for the install flow. It accepts these flags:
-
-```bash
-./setup                          # auto-detect installed hosts and register for each
-./setup --host claude-code       # only Claude Code
-./setup --host claude-desktop    # only Claude Desktop
-./setup --host cursor            # only Cursor
-./setup --host all               # register everywhere even if not detected
-./setup --skip-validate          # skip the API-key validation step
-```
-
-Restart Claude Code once when it's done, then try:
-
-```
-/decide should I take the new job?
-```
-
-For Claude Desktop, Cursor, or a manual setup, see the [Install matrix](#install-matrix) below.
+- **Python ≥3.11.** macOS still ships Python 3.9. The Claude Code paste prompt detects this and installs Python 3.11.9 via pyenv automatically (no admin/sudo, but the build takes ~10 min the first time).
+- **Two API keys.** `ANTHROPIC_API_KEY` (mandatory — runs the 10 advisors) and `OPENAI_API_KEY` (embedding provider).
+- **Restart Claude Code fully after install.** Close ALL terminals running `claude`, then reopen. The MCP catalog is loaded once at startup; a running session will never pick up a freshly-registered server.
 
 ---
 
-## Install matrix
+## How it works
+
+```
+question
+   ↓
+┌─ phase 1 ─────────────────────┐
+│ scoping (Haiku 4.5)           │
+│ → 4–7 clarifying questions    │
+└───────────────────────────────┘
+   ↓ user answers
+┌─ phase 2 ─────────────────────┐
+│ 9 frames in parallel (Sonnet) │
+│ ↓                             │
+│ embeddings (OpenAI)           │
+│ ↓                             │
+│ classical MDS + cosine        │
+│ ↓                             │
+│ consensus synthesis (Haiku)   │
+│ ↓                             │
+│ tenth-man steel-man (Opus)    │
+│ ↓                             │
+│ disagreement map + report     │
+└───────────────────────────────┘
+```
+
+The verdict is one of three states:
+
+- **aligned-stable** — the nine cluster tightly and the tenth's dissent is moderate
+- **aligned-fragile** — the nine are tight but the tenth pushes far enough to break it coherently
+- **divided** — the nine themselves are spread; there was no real consensus to attack
+
+---
+
+## Cognitive frames
+
+Nine consensus frames + one mandatory dissenter:
+
+| # | Frame              | Lens                                                      |
+|---|--------------------|-----------------------------------------------------------|
+| 1 | empirical          | quantification, base rates, [assumption] markers          |
+| 2 | historical         | precedents — what happened the last 3–5 times             |
+| 3 | first-principles   | reduce to physical / economic / logical atoms             |
+| 4 | analogical         | cross-domain mappings (biology, military, finance)        |
+| 5 | systemic           | feedback loops, second- and third-order effects           |
+| 6 | ethical            | deontological + consequentialist tension                  |
+| 7 | soft-contrarian    | surgical reframe of the loaded silent assumption          |
+| 8 | radical-optimist   | what unlocks if it goes 10× better                        |
+| 9 | pre-mortem         | assume it failed in 12 months — describe how              |
+| 10| **tenth-man**      | steel-man dissent, mandatory, after the nine align        |
+
+All frames respond in the **same language as the question** (Spanish question → Spanish answer; English → English). The report chrome (headings, labels, reading guide) follows the same rule by auto-detecting the question's language; force a single locale with `HENGE_LOCALE=en` or `HENGE_LOCALE=es` in your `.env`.
+
+---
+
+## Models & costs
+
+| Stage              | Model                | Why                                |
+| ------------------ | -------------------- | ---------------------------------- |
+| Scoping            | Claude Haiku 4.5     | fast, cheap, ~3–5 s per call       |
+| 9 cognitive frames | Claude Sonnet 4.6    | quality reasoning, parallel        |
+| Consensus synthesis| Claude Haiku 4.5     | summarization, structured output   |
+| Tenth-man dissent  | Claude Opus 4.7      | hardest reasoning, fully sequential|
+| Embeddings         | OpenAI               | `text-embedding-3-small` by default|
+
+Typical cost per full run: **~USD 0.65** (range USD 0.50–0.80 depending on token spread).
+
+---
+
+## Use cases
+
+- founder & operator decisions
+- hiring / scaling / firing
+- product strategy and prioritization
+- risk analysis & pre-mortems
+- counterfactual reasoning
+- AI agent orchestration where you need a structured second opinion
+
+---
+
+## What this is NOT
+
+- not a chatbot
+- not a debate simulator
+- not a multi-agent chat
+- not a vibe-checker
+
+It is a **decision-quality** tool. The output is a measurable structure of agreement and disagreement, not a longer answer.
+
+---
+
+## Roadmap
+
+- numeric consensus-strength scoring
+- dissent-impact scoring
+- adaptive frame selection (only run the lenses that matter)
+- PDF / shareable web report
+- streaming results
+- multi-model support (Gemini, GPT, local)
+- local embeddings (sentence-transformers, no API key required)
+
+---
+
+## Design philosophy
+
+- don't generate more answers → generate better structure
+- don't simulate intelligence → measure it
+- don't force dissent → earn it
+
+---
+
+## Mental model
+
+Henge is not trying to be right.
+
+It is trying to make your thinking harder to break.
+
+---
+
+## License
+
+MIT
+
+---
+---
+
+# Developer reference
+
+Everything below is for integrators and developers. The [Quickstart](#quickstart--claude-code-30s) at the top is enough for normal use.
+
+## Manual install
 
 | Client          | Install                                          |
 | --------------- | ------------------------------------------------ |
-| Claude Code     | One-shot — see [Quickstart](#quickstart-30s)     |
+| Claude Code     | One-shot — see [Quickstart](#quickstart--claude-code-30s) |
 | Claude Desktop  | Manual config edit                               |
 | Cursor          | Manual config edit                               |
 | Anything else   | Manual `pip install -e .` + run as MCP server    |
 
 All paths reach the same MCP server and call the same `decide` tool. Reports persist at `~/.henge/reports/` and the browseable `index.html` ledger auto-regenerates on every run.
 
-### Claude Desktop · manual
+### Claude Desktop
 
 Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
 
@@ -129,11 +257,11 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
 }
 ```
 
-### Cursor · manual
+### Cursor
 
 Add the same `mcpServers.henge` block to Cursor's MCP config (`Settings → MCP → Edit`).
 
-### Manual install (any environment)
+### Any environment
 
 ```bash
 git clone --single-branch --depth 1 https://github.com/ChrisPiz/Henge.git ~/Henge
@@ -141,8 +269,7 @@ cd ~/Henge
 cp .env.example .env
 # Open .env and fill in:
 #   ANTHROPIC_API_KEY  (required — runs the 9 frames + tenth-man)
-#   OPENAI_API_KEY     (default embedding provider)
-#   VOYAGE_API_KEY     (optional — set EMBED_PROVIDER=voyage for higher quality)
+#   OPENAI_API_KEY     (embedding provider)
 
 ./setup                  # does Python detection, venv, pip install -e .,
                          # key validation, MCP registration, slash command
@@ -150,43 +277,18 @@ cp .env.example .env
 
 The `setup` script handles every step deterministically. If you'd rather run the pieces yourself: `python3.11 -m venv .venv && .venv/bin/pip install -e .` then register the MCP with your host of choice.
 
----
+### Setup script flags (optional)
 
-## Before you install
+The Quickstart paste runs `./setup` with no flags — the script auto-detects every MCP host on the machine (Claude Code, Claude Desktop, Cursor) and registers Henge for each. Use these flags only to override that default.
 
-Quick checklist so the install doesn't surprise you:
-
-- **Python ≥3.11.** macOS still ships Python 3.9. The Claude Code paste prompt detects this and installs Python 3.11.9 via pyenv automatically (no admin/sudo, but the build takes ~10 min the first time).
-- **Two API keys.** `ANTHROPIC_API_KEY` (mandatory — runs the 10 advisors) and `OPENAI_API_KEY` (default embedding provider). Voyage is an alternative — see [Embeddings · why a second provider?](#embeddings--why-a-second-provider).
-- **`pip install -e .` is mandatory.** Not `pip install -r requirements.txt`. The editable install registers the `henge` package inside the venv. Without it, the MCP server crashes with `ModuleNotFoundError: No module named 'henge'` whenever it's spawned from a cwd other than `~/Henge` — which is exactly what an MCP host does.
-- **Restart Claude Code fully after install.** Close ALL terminals running `claude`, then reopen. The MCP catalog is loaded once at startup; a running session will never pick up a freshly-registered server.
-
----
-
-## Troubleshooting
-
-| Symptom | Cause / fix |
-| --- | --- |
-| `/decide` says "Henge MCP server doesn't appear to be connected" | Quit every `claude` session and reopen. If still failing → next row. |
-| `claude mcp list` shows `henge ✗ Failed` | Run `~/Henge/.venv/bin/python -m henge.server </dev/null` interactively to see the real error. Most common cause: the editable install was skipped — `cd ~/Henge && .venv/bin/pip install -e .` and re-register. |
-| `ModuleNotFoundError: No module named 'henge'` | Editable install missing. `cd ~/Henge && .venv/bin/pip install -e .` |
-| `git clone` fails with "destination already exists" | The repo is already there. `cd ~/Henge && git pull --ff-only`. |
-| `pyenv install` shows an `lzma` warning | Non-fatal, ignore. (Optional cleanup: `brew install xz` and re-run.) |
-| Server validates keys then exits immediately | Expected. It's a stdio MCP server; without a client on stdin, it shuts down once `✓ keys validated` is printed. |
-| `claude mcp add` rejects the path with $HOME | Pass an absolute path: `~/Henge/.venv/bin/python` (Claude Code expands `~`, but other shells re-expand `$HOME` after registration). |
-
----
-
-## MCP integration
-
-Henge speaks Model Context Protocol. Any MCP-compatible client can drive it as a reasoning tool.
-
-Tested with:
-
-- **Claude Code** (one-shot install)
-- **Claude Desktop** (manual config)
-- **Cursor** (manual config)
-- Any other MCP-compatible agent or local AI pipeline
+```bash
+./setup                          # default — auto-detect installed hosts (what the Quickstart runs)
+./setup --host claude-code       # register only for Claude Code
+./setup --host claude-desktop    # register only for Claude Desktop
+./setup --host cursor            # register only for Cursor
+./setup --host all               # register for every host even if not detected
+./setup --skip-validate          # skip the API-key validation step
+```
 
 ---
 
@@ -305,91 +407,6 @@ The JSON is the source of truth. The HTML is a pure render of it — delete a di
 
 ---
 
-## How it works
-
-```
-question
-   ↓
-┌─ phase 1 ─────────────────────┐
-│ scoping (Haiku 4.5)           │
-│ → 4–7 clarifying questions    │
-└───────────────────────────────┘
-   ↓ user answers
-┌─ phase 2 ─────────────────────┐
-│ 9 frames in parallel (Sonnet) │
-│ ↓                             │
-│ embeddings (OpenAI / Voyage)  │
-│ ↓                             │
-│ classical MDS + cosine        │
-│ ↓                             │
-│ consensus synthesis (Haiku)   │
-│ ↓                             │
-│ tenth-man steel-man (Opus)    │
-│ ↓                             │
-│ disagreement map + report     │
-└───────────────────────────────┘
-```
-
-The verdict is one of three states:
-
-- **aligned-stable** — the nine cluster tightly and the tenth's dissent is moderate
-- **aligned-fragile** — the nine are tight but the tenth pushes far enough to break it coherently
-- **divided** — the nine themselves are spread; there was no real consensus to attack
-
----
-
-## Cognitive frames
-
-Nine consensus frames + one mandatory dissenter:
-
-| # | Frame              | Lens                                                      |
-|---|--------------------|-----------------------------------------------------------|
-| 1 | empirical          | quantification, base rates, [assumption] markers          |
-| 2 | historical         | precedents — what happened the last 3–5 times             |
-| 3 | first-principles   | reduce to physical / economic / logical atoms             |
-| 4 | analogical         | cross-domain mappings (biology, military, finance)        |
-| 5 | systemic           | feedback loops, second- and third-order effects           |
-| 6 | ethical            | deontological + consequentialist tension                  |
-| 7 | soft-contrarian    | surgical reframe of the loaded silent assumption          |
-| 8 | radical-optimist   | what unlocks if it goes 10× better                        |
-| 9 | pre-mortem         | assume it failed in 12 months — describe how              |
-| 10| **tenth-man**      | steel-man dissent, mandatory, after the nine align        |
-
-All frames respond in the **same language as the question** (Spanish question → Spanish answer; English → English). The report chrome (headings, labels, reading guide) follows the same rule by auto-detecting the question's language; force a single locale with `HENGE_LOCALE=en` or `HENGE_LOCALE=es` in your `.env`.
-
----
-
-## Models & costs
-
-| Stage              | Model                | Why                                |
-| ------------------ | -------------------- | ---------------------------------- |
-| Scoping            | Claude Haiku 4.5     | fast, cheap, ~3–5 s per call       |
-| 9 cognitive frames | Claude Sonnet 4.6    | quality reasoning, parallel        |
-| Consensus synthesis| Claude Haiku 4.5     | summarization, structured output   |
-| Tenth-man dissent  | Claude Opus 4.7      | hardest reasoning, fully sequential|
-| Embeddings         | OpenAI / Voyage      | `text-embedding-3-small` by default|
-
-Typical cost per full run: **~USD 0.65** (range USD 0.50–0.80 depending on token spread).
-
----
-
-## Embeddings · why a second provider?
-
-> "If I'm using Claude, the idea is to use only Claude — right?"
-
-Right in spirit, but Henge needs to compute distance between the 10 advisor responses to draw the disagreement map, and that requires **embeddings** (text → vector). Anthropic does not currently offer an embeddings API, so a second provider is unavoidable for the math layer that turns 10 paragraphs of reasoning into the consensus structure you see on the report.
-
-Two options today:
-
-| Provider | Default? | Cost | Notes |
-| --- | --- | --- | --- |
-| **OpenAI** `text-embedding-3-small` | default | ~USD 0.0005/run | Cheapest. Most devs already have a key. |
-| **Voyage AI** | opt-in | Free tier · 200M tokens/month (~50k runs) | Anthropic's recommended embedding partner. Better quality for Spanish. Set `EMBED_PROVIDER=voyage` + `VOYAGE_API_KEY=...` in `.env`. |
-
-If you want to stay inside the Anthropic ecosystem with a free key, use Voyage — same effect as OpenAI, no separate billing. A local-embeddings option (no API key, sentence-transformers on-device) is on the [Roadmap](#roadmap).
-
----
-
 ## Architecture
 
 ```
@@ -407,56 +424,40 @@ henge/
 
 ---
 
-## Use cases
+## Embeddings · provider config
 
-- founder & operator decisions
-- hiring / scaling / firing
-- product strategy and prioritization
-- risk analysis & pre-mortems
-- counterfactual reasoning
-- AI agent orchestration where you need a structured second opinion
+Henge needs to compute distance between the 10 advisor responses to draw the disagreement map, and that requires **embeddings** (text → vector). Anthropic does not currently offer an embeddings API, so a second provider is unavoidable for the math layer.
 
----
+**Default: OpenAI `text-embedding-3-small`** — ~USD 0.0005/run. Most devs already have a key. Recommended.
 
-## What this is NOT
+**Voyage AI (advanced opt-in).** Higher embedding quality for Spanish, but the free tier is unusable: without a payment method on file, Voyage caps at **3 RPM / 10K TPM**, and a single Henge run embeds 10 advisor responses in one call — that trips the TPM cap and fails the run. To use Voyage you must add a payment method on https://dashboard.voyageai.com/ first (the 200M free tokens/month still apply, the payment method only unlocks standard rate limits). Then set `EMBED_PROVIDER=voyage` + `VOYAGE_API_KEY=...` in `.env`. Otherwise leave it on OpenAI.
 
-- not a chatbot
-- not a debate simulator
-- not a multi-agent chat
-- not a vibe-checker
-
-It is a **decision-quality** tool. The output is a measurable structure of agreement and disagreement, not a longer answer.
+A local-embeddings option (no API key, sentence-transformers on-device) is on the [Roadmap](#roadmap).
 
 ---
 
-## Roadmap
+## MCP integration
 
-- numeric consensus-strength scoring
-- dissent-impact scoring
-- adaptive frame selection (only run the lenses that matter)
-- PDF / shareable web report
-- streaming results
-- multi-model support (Gemini, GPT, local)
-- local embeddings (sentence-transformers, no API key required)
+Henge speaks Model Context Protocol. Any MCP-compatible client can drive it as a reasoning tool.
 
----
+Tested with:
 
-## Design philosophy
-
-- don't generate more answers → generate better structure
-- don't simulate intelligence → measure it
-- don't force dissent → earn it
+- **Claude Code** (one-shot install)
+- **Claude Desktop** (manual config)
+- **Cursor** (manual config)
+- Any other MCP-compatible agent or local AI pipeline
 
 ---
 
-## Mental model
+## Troubleshooting
 
-Henge is not trying to be right.
-
-It is trying to make your thinking harder to break.
-
----
-
-## License
-
-MIT
+| Symptom | Cause / fix |
+| --- | --- |
+| `/decide` says "Henge MCP server doesn't appear to be connected" | Quit every `claude` session and reopen. If still failing → next row. |
+| `claude mcp list` shows `henge ✗ Failed` | Run `~/Henge/.venv/bin/python -m henge.server </dev/null` interactively to see the real error. Most common cause: the editable install was skipped — `cd ~/Henge && .venv/bin/pip install -e .` and re-register. |
+| `ModuleNotFoundError: No module named 'henge'` | Editable install missing. `cd ~/Henge && .venv/bin/pip install -e .` |
+| `git clone` fails with "destination already exists" | The repo is already there. `cd ~/Henge && git pull --ff-only`. |
+| `pyenv install` shows an `lzma` warning | Non-fatal, ignore. (Optional cleanup: `brew install xz` and re-run.) |
+| Server validates keys then exits immediately | Expected. It's a stdio MCP server; without a client on stdin, it shuts down once `✓ keys validated` is printed. |
+| `claude mcp add` rejects the path with $HOME | Pass an absolute path: `~/Henge/.venv/bin/python` (Claude Code expands `~`, but other shells re-expand `$HOME` after registration). |
+| `embed_failed` with Voyage `RateLimitError` (3 RPM / 10K TPM) | Voyage free tier without payment method can't run Henge. Add a payment method at https://dashboard.voyageai.com/ — or remove `EMBED_PROVIDER=voyage` from `.env` to fall back to OpenAI. |
