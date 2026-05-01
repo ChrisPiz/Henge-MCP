@@ -83,6 +83,8 @@ Henge runs your question through ten cognitive perspectives and:
 
 ## Core principle
 
+![Nine advisors aligned · the tenth must dissent — verdict, distances, and the dissent that landed](docs/report-banner.png)
+
 Forcing disagreement without consensus is noise.
 
 Henge does not simulate debate. It analyzes the structure of thought, then quantifies the distance between voices so the dissent has somewhere to land.
@@ -152,6 +154,8 @@ Nine consensus frames + one mandatory dissenter:
 All frames respond in the **same language as the question** (Spanish question → Spanish answer; English → English). The report chrome (headings, labels, reading guide) follows the same rule by auto-detecting the question's language; force a single locale with `HENGE_LOCALE=en` or `HENGE_LOCALE=es` in your `.env`.
 
 ![Frames ranked by distance to centroid — closest is the most representative voice, farthest reasons most alone](docs/frames-table.png)
+
+![Tenth-man steel-man dissent — premises accepted, where the consensus fails, the question behind the question, and consensus failure modes](docs/tenth-man-dissent.png)
 
 ---
 
