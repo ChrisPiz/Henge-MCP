@@ -61,26 +61,57 @@ Henge does not simulate debate. It analyzes the structure of thought, then quant
 If you have **Claude Code** installed, paste this prompt and it self-installs:
 
 ````
-Install Henge from https://github.com/ChrisPiz/Henge-MCP into ~/Henge.
+Install Henge from https://github.com/ChrisPiz/Henge-MCP into ~/Henge. The whole flow MUST be idempotent — if any step was done by a previous attempt, detect it and continue, do NOT fail on "directory already exists", "venv already exists", or "MCP already registered".
 
-Steps:
-1. git clone https://github.com/ChrisPiz/Henge-MCP.git ~/Henge
-2. cd into it, create a Python 3.11+ venv at .venv, activate it, then `pip install -e .` (editable install — registers the `henge` package in the venv so it imports from any cwd, which is what the MCP server spawn needs).
-3. Ask me for my ANTHROPIC_API_KEY and OPENAI_API_KEY (one at a time, don't print them back). Write them into .env using cp .env.example .env as the starting point.
-4. Verify the keys by running `python -m henge.server` for ~5 seconds — it must print "✓ keys validated" to stderr. Kill it after that confirmation.
-5. Register globally: `claude mcp add -s user henge "$HOME/Henge/.venv/bin/python" -- -m henge.server`
-6. Confirm with `claude mcp list` — the henge row must show ✓ Connected.
-7. Create the slash command at ~/.claude/commands/decide.md with this content:
-   ---
-   description: Invokes Henge — disagreement map of 9 advisors + 1 dissenter.
-   ---
-   Use the `decide` MCP tool from the `henge` server to analyze: $ARGUMENTS.
+STEP 1 — Source at ~/Henge
+- If ~/Henge does not exist or is empty: `git clone https://github.com/ChrisPiz/Henge-MCP.git ~/Henge`.
+- If ~/Henge exists with a .git pointing at ChrisPiz/Henge-MCP: `cd ~/Henge && git pull --ff-only`.
+- If ~/Henge exists but is something else: stop and ask the user what to do.
 
-   If the response is `status: "needs_context"`: present the `questions` to the user as a numbered list, then add a final line saying they can skip these and run immediately by replying "skip" (or "omitir" / "corre ya"). On that reply, call `decide` again with `skip_scoping=True`. Otherwise, call `decide` again with `context` set to their answers.
+STEP 2 — Python ≥3.11
+- Try in this order, pick the first that works, save the absolute path to a variable named PY: `python3.13`, `python3.12`, `python3.11`, then any `~/.pyenv/versions/3.11.*/bin/python3.11`.
+- If none exist, install one WITHOUT requiring sudo:
+  (a) if `brew` is on PATH: `brew install python@3.11`.
+  (b) else: `curl https://pyenv.run | bash`, then `export PYENV_ROOT="$HOME/.pyenv" && export PATH="$PYENV_ROOT/bin:$PATH" && eval "$(pyenv init -)" && pyenv install 3.11.9`. The pyenv install can take ~10 min — use a 900s (15 min) timeout for that single Bash call. A `lzma` warning at the end is non-fatal, ignore it. Set PY to `$HOME/.pyenv/versions/3.11.9/bin/python3.11`.
+- Confirm `"$PY" --version` prints `Python 3.11.x` or higher before continuing.
 
-   When the full JSON returns (status absent): cite `viz_path`, summarize the `consensus` first, list the 9 advisors' conclusions, then quote `tenth_man.response` verbatim.
+STEP 3 — Virtualenv + editable install
+- `cd ~/Henge`.
+- If `~/Henge/.venv/bin/python` does not exist: `"$PY" -m venv .venv`.
+- `~/Henge/.venv/bin/pip install --upgrade pip` (quiet).
+- `~/Henge/.venv/bin/pip install -e .`  ← REQUIRED. Without the editable install the `henge` package is not registered in the venv and the MCP server crashes with `ModuleNotFoundError: No module named 'henge'` whenever it is spawned from a cwd other than ~/Henge.
+- Cross-cwd sanity check: `cd /tmp && ~/Henge/.venv/bin/python -c "import henge; print('ok')"` MUST print `ok`. If it fails, redo step 3 from the top.
 
-After step 6, tell me to restart Claude Code and try `/decide should I take the new job?`
+STEP 4 — API keys (NEVER echo them back to the chat)
+- If ~/Henge/.env does not exist: `cp ~/Henge/.env.example ~/Henge/.env`.
+- Ask the user for ANTHROPIC_API_KEY. When they paste it, update the line `ANTHROPIC_API_KEY=...` in ~/Henge/.env using a single in-place replacement. CONFIRM ONLY THE LENGTH ("got it, 108 chars") — never paste the value back into the chat or any tool input.
+- Repeat for OPENAI_API_KEY. (If the user prefers Voyage: ask for VOYAGE_API_KEY instead, set EMBED_PROVIDER=voyage in .env, leave OPENAI_API_KEY blank.)
+- Optional: ask whether to force `HENGE_LOCALE=en` or `es` (else auto-detected from each question). If yes, append the line.
+
+STEP 5 — Validate the keys
+- Run: `cd ~/Henge && (timeout 5 ./.venv/bin/python -m henge.server </dev/null) 2>&1 | head -20`. (On macOS without coreutils, use `gtimeout` or fall back to `( ./.venv/bin/python -m henge.server </dev/null & sleep 5; kill $! 2>/dev/null )`.)
+- SUCCESS = the output contains `✓ keys validated`. The process exiting after that line is expected (stdio MCP server with closed stdin). Treat any auth error, traceback, or missing-key message as FAILURE and stop with a clear explanation.
+
+STEP 6 — Register the MCP
+- If `claude mcp list` already lists `henge`: `claude mcp remove henge` first.
+- Register with an ABSOLUTE path (not $HOME — expand it now): `claude mcp add -s user henge -- "$HOME/Henge/.venv/bin/python" -m henge.server`.
+- `claude mcp list` again. The `henge` row MUST show `✓ Connected`. If it shows ✗ Failed, run `~/Henge/.venv/bin/python -m henge.server </dev/null` once interactively, capture the stderr, and stop with that error.
+
+STEP 7 — /decide slash command
+- `mkdir -p ~/.claude/commands`.
+- Write ~/.claude/commands/decide.md with EXACTLY this content (front matter included, no extra wrapping):
+  ---
+  description: Invokes Henge — disagreement map of 9 advisors + 1 dissenter.
+  ---
+  Use the `decide` MCP tool from the `henge` server to analyze: $ARGUMENTS.
+
+  If the response is `status: "needs_context"`: present the `questions` to the user as a numbered list, then add a final line saying they can skip these and run immediately by replying "skip" (or "omitir" / "corre ya"). On that reply, call `decide` again with `skip_scoping=True`. Otherwise, call `decide` again with `context` set to their answers.
+
+  When the full JSON returns (status absent): cite `viz_path`, summarize the `consensus` first, list the 9 advisors' conclusions, then quote `tenth_man.response` verbatim.
+
+STEP 8 — Hand-off
+- Print a one-line summary: Python version used, embed provider (openai/voyage), MCP status (Connected).
+- Tell the user to fully quit Claude Code (close ALL terminal sessions running `claude`) and reopen — the MCP catalog is loaded once at startup, so a running session won't see the new server. Then try `/decide should I take the new job?`.
 ````
 
 Restart Claude Code once when it's done, then try:
