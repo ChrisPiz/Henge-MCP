@@ -8,7 +8,7 @@ One must disagree.
 
 Henge is an MCP server that measures AI consensus and forces a steel-man counter-argument before you act. Built for humans making serious decisions with AI in the loop — also drivable by autonomous agents.
 
-**[→ See a live demo report](https://chrispiz.github.io/Henge-MCP/demo.html)**
+**[→ See a live demo report](https://chrispiz.github.io/Henge/demo.html)**
 
 ---
 
