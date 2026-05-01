@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/header.jpg" alt="Henge — Dissent for AI Agents" width="100%">
+</p>
+
 # Henge · Structured Dissent for AI Agents
 
 Henge is a Model Context Protocol server that helps AI agents avoid premature consensus.
@@ -6,7 +10,7 @@ It runs multiple cognitive frames over a decision, measures alignment, and gener
 
 > Agreement is not a signal. It's just coherent noise — unless you measure it.
 
-**[→ Live demo report](https://raw.githack.com/ChrisPiz/Henge/main/docs/demo.html)** — see what Henge returns for a real founder decision.
+**[→ Live demo report](https://raw.githack.com/ChrisPiz/Henge-MCP/main/docs/demo.html)** — see what Henge returns for a real founder decision.
 
 ---
 
@@ -52,10 +56,10 @@ The goal is to give it a specialized tool for:
 Paste this prompt into Claude Code and let it do the install for you:
 
 ```
-Install Henge from https://github.com/ChrisPiz/Henge into ~/Henge.
+Install Henge from https://github.com/ChrisPiz/Henge-MCP into ~/Henge.
 
 Steps:
-1. git clone the repo into ~/Henge
+1. git clone https://github.com/ChrisPiz/Henge-MCP.git ~/Henge
 2. cd into it, create a Python 3.11+ venv at .venv, activate it, pip install -r requirements.txt
 3. Ask me for my ANTHROPIC_API_KEY and OPENAI_API_KEY (one at a time, don't print them back). Write them into .env using cp .env.example .env as the starting point.
 4. Verify the keys by running `python -m henge.server` for ~5 seconds — it must print "✓ keys validated" to stderr. Kill it after that confirmation.
@@ -80,7 +84,7 @@ After Claude Code finishes, restart it once so the new MCP server is picked up.
 **1. Clone and install dependencies**
 
 ```bash
-git clone https://github.com/ChrisPiz/Henge.git
+git clone https://github.com/ChrisPiz/Henge-MCP.git Henge
 cd Henge
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
