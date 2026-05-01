@@ -1,61 +1,196 @@
-<p align="center">
-  <img src="docs/header-v2.jpg" alt="Henge — Dissent for AI Agents" width="100%">
-</p>
+# Henge · Dissent for AI Agents
 
-# Henge · Structured Dissent for AI Agents
+![Henge](docs/header-v2.jpg)
 
-Henge is a Model Context Protocol server that helps AI agents avoid premature consensus.
+Ten pillars.
+Nine align.
+One must disagree.
 
-It runs multiple cognitive frames over a decision, measures alignment, and generates structured dissent only when needed.
-
-> Agreement is not a signal. It's just coherent noise — unless you measure it.
-
-**[→ Live demo report](https://raw.githack.com/ChrisPiz/Henge-MCP/main/docs/demo.html)** — see what Henge returns for a real founder decision.
+Henge is a structured-dissent engine exposed as an MCP server. It helps AI agents — and the humans behind them — detect consensus, measure it, and challenge it only when it actually matters.
 
 ---
 
-## What it does
+## The problem
 
-Henge gives compatible AI clients a tool for decision stress-testing.
+AI systems don't fail because they lack intelligence.
 
-Instead of asking one model for one answer, it:
+They fail because:
+- they converge too fast
+- they reinforce assumptions
+- they mistake agreement for truth
 
-1. Generates multiple cognitive perspectives
-2. Measures agreement between them
-3. Detects whether consensus is strong, weak, or fragmented
-4. Produces a steel-man dissent when useful
-5. Returns a structured decision report
-
----
-
-## Why MCP
-
-MCP makes Henge available as a reusable reasoning tool inside:
-
-- Claude Desktop
-- Cursor
-- local AI workflows
-- agent builders
-- custom orchestration systems
-
-The goal is not to replace the main AI assistant.
-
-The goal is to give it a specialized tool for:
-
-- avoiding groupthink
-- questioning consensus
-- comparing assumptions
-- improving decision quality
+Consensus is cheap. Correct decisions are not.
 
 ---
 
-## Setup
+## What Henge does
 
-### Option A · One-shot install with Claude Code (recommended)
+Henge runs your question through ten cognitive perspectives and:
+
+1. Asks 4–7 scoping questions before reasoning, so the advisors apply to facts instead of speculation
+2. Runs nine cognitive frames in parallel — each with its own lens
+3. Embeds the answers, projects them with classical MDS, and measures cosine distance to the centroid of the nine
+4. Forces a tenth advisor to steel-man the dissent against whatever consensus emerged
+5. Persists a full HTML report + JSON record on disk and opens it in your browser
+
+---
+
+## Core principle
+
+Forcing disagreement without consensus is noise.
+
+Henge does not simulate debate. It analyzes the structure of thought, then quantifies the distance between voices so the dissent has somewhere to land.
+
+---
+
+## Why this is different
+
+| Approach              | Problem                       | Henge                              |
+| --------------------- | ----------------------------- | ---------------------------------- |
+| Single LLM            | Overconfident answers         | Multi-frame reasoning              |
+| Multi-agent debate    | Noisy, redundant              | Measures structure, doesn't echo   |
+| Devil's advocate      | Always contradicts            | Tenth-man only when warranted      |
+| Fixed "tenth man" rule| Hard-coded contrarian         | Steel-man with measurable distance |
+
+---
+
+## How it works
+
+```
+question
+   ↓
+┌─ phase 1 ─────────────────────┐
+│ scoping (Haiku 4.5)           │
+│ → 4–7 clarifying questions    │
+└───────────────────────────────┘
+   ↓ user answers
+┌─ phase 2 ─────────────────────┐
+│ 9 frames in parallel (Sonnet) │
+│ ↓                             │
+│ embeddings (OpenAI / Voyage)  │
+│ ↓                             │
+│ classical MDS + cosine        │
+│ ↓                             │
+│ consensus synthesis (Haiku)   │
+│ ↓                             │
+│ tenth-man steel-man (Opus)    │
+│ ↓                             │
+│ disagreement map + report     │
+└───────────────────────────────┘
+```
+
+The verdict is one of three states:
+
+- **aligned-stable** — the nine cluster tightly and the tenth's dissent is moderate
+- **aligned-fragile** — the nine are tight but the tenth pushes far enough to break it coherently
+- **divided** — the nine themselves are spread; there was no real consensus to attack
+
+---
+
+## Cognitive frames
+
+Nine consensus frames + one mandatory dissenter:
+
+| # | Frame              | Lens                                                      |
+|---|--------------------|-----------------------------------------------------------|
+| 1 | empirical          | quantification, base rates, [assumption] markers          |
+| 2 | historical         | precedents — what happened the last 3–5 times             |
+| 3 | first-principles   | reduce to physical / economic / logical atoms             |
+| 4 | analogical         | cross-domain mappings (biology, military, finance)        |
+| 5 | systemic           | feedback loops, second- and third-order effects           |
+| 6 | ethical            | deontological + consequentialist tension                  |
+| 7 | soft-contrarian    | surgical reframe of the loaded silent assumption          |
+| 8 | radical-optimist   | what unlocks if it goes 10× better                        |
+| 9 | pre-mortem         | assume it failed in 12 months — describe how              |
+| 10| **tenth-man**      | steel-man dissent, mandatory, after the nine align        |
+
+All frames respond in the **same language as the question** (Spanish question → Spanish answer; English → English).
+
+---
+
+## Output structure
+
+```jsonc
+{
+  "viz_path": "/Users/you/.henge/reports/20260501-2247_should-i-hire-now/report.html",
+  "report_id": "20260501-2247_should-i-hire-now",
+  "report_dir": "/Users/you/.henge/reports/20260501-2247_should-i-hire-now",
+  "consensus": "# Validate before hiring — asymmetric risk dominates\n\n## (1) Where the nine converge ...",
+  "frames": [
+    { "frame": "empirical",        "status": "ok", "distance": 0.046, "summary": "..." },
+    { "frame": "first-principles", "status": "ok", "distance": 0.069, "summary": "..." }
+    // 7 more
+  ],
+  "tenth_man": {
+    "distance": 0.148,
+    "response": "## §1 Facts I accept\n... ## §2 Where the consensus fails ..."
+  },
+  "summary": {
+    "tenth_man_distance": 0.148,
+    "max_frame_distance": 0.085,
+    "consensus_state": "aligned-stable",       // or "aligned-fragile" | "divided"
+    "consensus_fragility": "Advisors aligned — dissent sounds reasonable but consensus holds.",
+    "n_frames_succeeded": 9,
+    "embed_provider": "openai",
+    "embed_model": "text-embedding-3-small"
+  },
+  "cost_clp": 580.0
+}
+```
+
+The HTML at `viz_path` ships with the disagreement map, sortable frames table, consensus card, tenth-man steel-man, and a per-run hero painting bundled inside `report_dir/assets/`.
+
+---
+
+## MCP integration
+
+Henge speaks Model Context Protocol. Any MCP-compatible client can drive it as a reasoning tool.
+
+Tested with:
+
+- **Claude Code** (one-shot install)
+- **Claude Desktop** (manual config)
+- **Cursor** (manual config)
+- Any other MCP-compatible agent or local AI pipeline
+
+---
+
+## Quickstart (30s)
+
+```bash
+# 1) clone + install
+git clone https://github.com/ChrisPiz/Henge-MCP.git
+cd Henge-MCP
+pip install -e .
+
+# 2) keys
+cp .env.example .env
+# edit .env:
+#   ANTHROPIC_API_KEY  (required — runs the 9 frames + tenth-man)
+#   OPENAI_API_KEY     (default embedding provider)
+#   VOYAGE_API_KEY     (optional — set EMBED_PROVIDER=voyage for higher quality)
+
+# 3) run as MCP server
+python -m henge.server
+```
+
+---
+
+## Install matrix
+
+| Client          | Install                                          |
+| --------------- | ------------------------------------------------ |
+| Claude Code     | One-shot — paste a prompt and it self-installs   |
+| Claude Desktop  | Manual config edit                               |
+| Cursor          | Manual config edit                               |
+
+All three reach the same MCP server and call the same `decide` tool. Reports persist at `~/.henge/reports/` and the browseable `index.html` ledger auto-regenerates on every run.
+
+### Claude Code · one-shot prompt (recommended)
 
 Paste this prompt into Claude Code and let it do the install for you:
 
-```
+````
 Install Henge from https://github.com/ChrisPiz/Henge-MCP into ~/Henge.
 
 Steps:
@@ -72,227 +207,198 @@ Steps:
    Use the `decide` MCP tool from the `henge` server to analyze: $ARGUMENTS. When the JSON returns: cite viz_path, summarize the consensus first, list the 9 advisors' conclusions, then quote the tenth-man verbatim.
 
 After step 6, tell me to restart Claude Code and try `/decide should I take the new job?`
+````
+
+After Claude Code finishes, restart it once so the new MCP server is picked up. Then try:
+
+```
+/decide should I take the new job?
 ```
 
-After Claude Code finishes, restart it once so the new MCP server is picked up.
+### Claude Desktop · manual
 
-### Option B · Manual install
-
-<details>
-<summary>Click to expand manual steps</summary>
-
-**1. Clone and install dependencies**
-
-```bash
-git clone https://github.com/ChrisPiz/Henge-MCP.git Henge
-cd Henge
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-**2. Configure API keys**
-
-```bash
-cp .env.example .env
-# Edit .env:
-#   ANTHROPIC_API_KEY  (required — runs the 9 frames + the tenth-man)
-#   OPENAI_API_KEY     (default embedding provider; cheaper, most devs already have one)
-#   VOYAGE_API_KEY     (optional — better quality for Spanish; uncomment EMBED_PROVIDER=voyage)
-```
-
-Verify keys:
-
-```bash
-python -m henge.server   # should print "✓ keys validated" then wait for stdio
-```
-
-**3. Register the MCP server with Claude Code**
-
-```bash
-claude mcp add -s user henge \
-  "$(pwd)/.venv/bin/python" -- -m henge.server
-```
-
-The `-s user` flag makes it available globally (any project). Drop the flag to scope it to the current directory only.
-
-Or, if you prefer editing config by hand, add to `~/.claude.json` (or your client's `mcp.json`):
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
 
 ```json
 {
   "mcpServers": {
     "henge": {
-      "command": "/absolute/path/to/Henge/.venv/bin/python",
-      "args": ["-m", "henge.server"]
+      "command": "python",
+      "args": ["-m", "henge.server"],
+      "cwd": "/absolute/path/to/Henge-MCP",
+      "env": {
+        "ANTHROPIC_API_KEY": "...",
+        "OPENAI_API_KEY": "..."
+      }
     }
   }
 }
 ```
 
-Restart Claude Code (or your MCP client). Verify with `claude mcp list` — `henge` should report `✓ Connected`.
+### Cursor · manual
 
-**4. Optional: add a `/decide` slash command**
-
-```bash
-mkdir -p ~/.claude/commands
-cat > ~/.claude/commands/decide.md <<'MD'
----
-description: Invokes Henge — disagreement map of 9 advisors + 1 dissenter.
----
-Use the `decide` MCP tool from the `henge` server to analyze: $ARGUMENTS
-
-When the JSON returns: cite `viz_path`, summarize the consensus first,
-list the 9 advisors' conclusions, then quote the tenth-man verbatim.
-MD
-```
-
-**5. Run the tests (optional)**
-
-```bash
-pip install -r requirements-dev.txt
-pytest tests/ -v
-```
-
-5 critical tests on design invariants + 2 smoke tests + provider-error handling. Suite runs in <5s with mocked SDK calls.
-
-</details>
-
-### Where reports live
-
-Every invocation persists to `~/.henge/reports/<id>/` with both a `report.html` (the editorial visualization) and a `report.json` (raw data: question, context, 10 responses, distances, summary, cost). A browseable `index.html` lists every past run, newest first.
-
-Override the location with `HENGE_REPORTS_DIR=/path/to/dir` in your `.env` if you want them elsewhere. There is no auto-purge — you decide when to clean up.
+Add the same `mcpServers.henge` block to Cursor's MCP config (`Settings → MCP → Edit`).
 
 ---
 
-## Core principle
+## Tool API
 
-Henge does not blindly contradict.
+### `decide(question, context=None, skip_scoping=False)`
 
-If there is no real consensus, forcing disagreement only adds noise.
+Two-phase. Phase 1 returns clarifying questions; phase 2 runs the ten advisors with the answers as context.
 
-The tenth-man activates when the system detects meaningful alignment between the other frames.
+#### Phase 1 — scoping (default)
 
----
+```jsonc
+// call
+{ "question": "Should I hire someone now?" }
 
-## Available tool
-
-### `henge_analyze`
-
-Runs a structured dissent analysis over a user question.
-
-**Input:**
-
-```json
+// response
 {
-  "question": "Should I hire someone or keep working alone in my business?",
-  "context": "Monthly revenue is CLP 2.4M. Hiring would cost around CLP 500K/month. I have family expenses and limited runway."
+  "status": "needs_context",
+  "questions": [
+    "What is your approximate net monthly income?",
+    "What's your runway in months?",
+    "Is the role revenue-generating or cost-saving?",
+    "..."
+  ],
+  "next_call_hint": "decide(question='...', context='<user answers formatted>')"
 }
 ```
 
-**Output:**
+#### Phase 2 — run
 
-```json
+```jsonc
+// call
 {
-  "consensus_strength": "weak",
-  "most_aligned_frame": "first-principles",
-  "most_divergent_frame": "analogical",
-  "tenth_man_activated": false,
-  "verdict": "No strong consensus detected. Do not force dissent.",
-  "recommendation": "Validate whether the operational bottleneck is truly limiting revenue before hiring."
+  "question": "Should I hire someone now?",
+  "context": "Net income CLP 2.4M / month, runway 8 months, role: senior engineer, ..."
 }
+
+// response: full disagreement-map JSON (see `Output structure` above)
+```
+
+#### Skip scoping
+
+```jsonc
+{ "question": "...", "skip_scoping": true }   // when the question already has rich context
 ```
 
 ---
 
-## Cognitive frames
+## Reports & ledger
 
-Each advisor runs a distinct reasoning frame. The point isn't to add ten voices — it's to get ten *different* angles on the same question and surface where they agree and where they don't.
+Each run writes:
 
-- **empirical** — Quantifies with numbers, base rates and evidence. Cites magnitudes and sources, marks every unverified premise as `[supuesto]`. Refuses to speculate when there are no real data.
+```
+~/.henge/reports/
+  20260501-224712_should-i-hire-now/
+    report.html       # full editorial visualization
+    report.json       # canonical record (question, context, 10 responses, distances, summary)
+    assets/
+      header-v2.jpg   # bundled hero painting
+  index.html          # auto-regenerated ledger of every past report
+```
 
-- **historical** — Cites 2–3 analogous cases from the past and extracts the pattern. Asks "what happened the last three times someone tried this?" Stops first-principles reasoning when precedent is abundant.
-
-- **first-principles** — Reduces the problem to its physical, economic or logical atoms and rebuilds without assuming the conventional approach. Asks "what would have to be true for the standard solution to be optimal?"
-
-- **analogical** — Pulls the *functional mechanism* from another domain — biology, military strategy, chess, finance, complex systems — and adapts it. Avoids surface metaphors; demands structural isomorphism.
-
-- **systemic** — Maps feedback loops, second- and third-order effects. Asks "what happens if everyone does this?" and "who changes their behavior in response?" Refuses to reason in partial equilibrium.
-
-- **ethical** — Crosses the deontological lens (rights, dignity, promises) with the consequentialist one (outcomes at 1, 5, 10 years). Names the tension between them when it exists instead of ducking it.
-
-- **soft-contrarian** — Accepts the question and reframes one silent assumption. *"Yes, but consider that X isn't necessarily true if Y."* Surgical nuance, not opposition. Won't say "it depends".
-
-- **radical-optimist** — Lights the 10× upside scenario. Asks "what unlocks if everything goes right?" and looks for asymmetric bets (capped downside, uncapped upside). Names risks briefly; doesn't dwell on them.
-
-- **pre-mortem** — Assumes the decision already failed at 12 months and describes why. Lists concrete operational failure modes ranked by likelihood, not severity. Diagnoses; doesn't recommend mitigations.
-
-- **tenth-man** — Reads the other nine and is *required* to dissent. Steel-mans the contrarian view: accepts observable facts, attacks shared interpretations, builds the most coherent counter-case it can find. Sounds convincing on purpose — that's its job, not a signal it's right.
+The JSON is the source of truth. The HTML is a pure render of it — delete a directory and it disappears from the ledger on the next run.
 
 ---
 
-## Compared to simple prompting
+## Models & costs
 
-| Approach | Problem | Henge |
-|----------|---------|-------------|
-| Single prompt | One confident answer | Multiple frames |
-| Multi-agent debate | Often noisy | Measures agreement |
-| Devil's advocate | Always contradicts | Conditional dissent |
-| Tenth-man rule | Fixed opposition | Data-driven dissent |
+| Stage              | Model                | Why                                |
+| ------------------ | -------------------- | ---------------------------------- |
+| Scoping            | Claude Haiku 4.5     | fast, cheap, ~3–5 s per call       |
+| 9 cognitive frames | Claude Sonnet 4.6    | quality reasoning, parallel        |
+| Consensus synthesis| Claude Haiku 4.5     | summarization, structured output   |
+| Tenth-man dissent  | Claude Opus 4.7      | hardest reasoning, fully sequential|
+| Embeddings         | OpenAI / Voyage      | `text-embedding-3-small` by default|
+
+Typical cost per full run: **~CLP 580** (≈ USD 0.65). Range CLP 430–730 depending on token spread.
+
+---
+
+## Example usage (agent)
+
+```ts
+const phase1 = await mcp.tools.decide({
+  question: "Should I expand my business?"
+})
+// phase1.questions → present to user, collect answers
+
+const phase2 = await mcp.tools.decide({
+  question: "Should I expand my business?",
+  context: "Revenue CLP 2.4M, expenses 500K, 8 months runway, ..."
+})
+// phase2.viz_path → opens HTML
+// phase2.summary.consensus_state → drives downstream agent logic
+```
 
 ---
 
 ## Use cases
 
-- Founder decisions
-- Product strategy
-- Hiring and investment decisions
-- Risk analysis
-- Agent orchestration
-- Pre-mortems
-- High-uncertainty choices
+- founder & operator decisions
+- hiring / scaling / firing
+- product strategy and prioritization
+- risk analysis & pre-mortems
+- counterfactual reasoning
+- AI agent orchestration where you need a structured second opinion
 
 ---
 
-## Not goals
+## What this is NOT
 
-Henge is not:
+- not a chatbot
+- not a debate simulator
+- not a multi-agent chat
+- not a vibe-checker
 
-- a chatbot
-- a debate simulator
-- a generic agent framework
-- a replacement for judgment
-
-It is a focused reasoning tool for structured disagreement.
+It is a **decision-quality** tool. The output is a measurable structure of agreement and disagreement, not a longer answer.
 
 ---
 
-## Example
+## Architecture
 
-User asks:
-
-> Should I hire someone for my 3D printing business?
-
-Henge may produce:
-
-> The nine frames converge around caution:
-> validate demand before creating a fixed cost.
->
-> The tenth-man challenges that:
-> waiting for perfect validation may be the mechanism that keeps the founder stuck in operational work.
->
-> Final verdict:
-> externalize first, measure impact, then convert to a fixed role only if time liberated becomes measurable revenue.
+```
+henge/
+  agents.py        # 9 frames in parallel + tenth-man sequencing
+  embed.py         # provider-agnostic embeddings + classical MDS
+  scoping.py       # 4–7 clarifying questions (Haiku)
+  consensus.py     # synthesis of the nine (Haiku)
+  viz.py           # editorial HTML report + disagreement map SVG
+  storage.py       # report.json + report.html + ledger
+  server.py        # MCP entrypoint
+  prompts/         # 10 cognitive-frame markdowns
+  assets/          # bundled hero painting
+```
 
 ---
 
 ## Roadmap
 
-- MCP tool schema refinement
-- Consensus strength scoring
-- Dissent impact scoring
-- HTML/PDF report export
-- Embedding-based disagreement map
-- Claude Desktop / Cursor usage examples
+- numeric consensus-strength scoring
+- dissent-impact scoring
+- adaptive frame selection (only run the lenses that matter)
+- PDF / shareable web report
+- streaming results
+- multi-model support (Gemini, GPT, local)
+
+---
+
+## Design philosophy
+
+- don't generate more answers → generate better structure
+- don't simulate intelligence → measure it
+- don't force dissent → earn it
+
+---
+
+## Mental model
+
+Henge is not trying to be right.
+
+It is trying to make your thinking harder to break.
 
 ---
 
