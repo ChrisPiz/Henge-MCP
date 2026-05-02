@@ -241,3 +241,53 @@ async def run_scoping(question: str) -> ScopingResult:
         haiku_usage=haiku_usage,
         gpt5_usage=gpt5_usage,
     )
+
+
+_CANONICAL_SYSTEM = """You receive an original decision question and the user's free-form context (their answers to scoping questions, possibly unstructured).
+
+Produce a tight executive summary suitable for feeding into 9 cognitive advisors. Goals:
+- Preserve every quantitative detail the user gave (numbers, dates, names, locations).
+- Resolve ambiguous references when possible.
+- Flag any internal inconsistencies the user wrote.
+
+Output format: plain prose, 2-4 paragraphs maximum. No headers, no bullets.
+
+After the summary, if you found inconsistencies, append a single line:
+INCONSISTENCIES: <semicolon-separated short flags>
+
+Match the language of the original question."""
+
+
+async def finalize_context(question: str, context: str) -> CanonicalContext:
+    """Opus canonicalizes the user's free-form context into a summary + flags.
+
+    When ``HENGE_ENABLE_CANONICAL_CONTEXT`` is false, the function passes the
+    context through unchanged with empty flags and ``opus_usage=None``.
+    """
+    if not ENABLE_CANONICAL_CONTEXT:
+        return CanonicalContext(summary=context, flags=[], opus_usage=None)
+
+    user = f"Original question:\n{question}\n\nUser context:\n{context}"
+    req = CompletionRequest(
+        system=_CANONICAL_SYSTEM,
+        user=user,
+        max_tokens=CANONICAL_MAX_TOKENS,
+        temperature=0.0,
+    )
+    try:
+        resp = await complete(_OPUS_MODEL, req)
+    except Exception:
+        return CanonicalContext(summary=context, flags=[], opus_usage=None)
+
+    text = resp.text.strip()
+    flags: list[str] = []
+    if "INCONSISTENCIES:" in text:
+        head, _, tail = text.partition("INCONSISTENCIES:")
+        text = head.strip()
+        flags = [f.strip() for f in tail.split(";") if f.strip()]
+
+    return CanonicalContext(
+        summary=text,
+        flags=flags,
+        opus_usage=_usage_dict(resp),
+    )

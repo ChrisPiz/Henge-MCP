@@ -119,3 +119,41 @@ async def test_run_scoping_handles_haiku_json_error():
     # Degraded: zero base questions; adversarial still runs (gpt-5 sees the original question).
     assert result.adversarial_count == 2
     assert len([q for q in result.questions if q.source == "scoping"]) == 0
+
+
+@pytest.mark.asyncio
+async def test_finalize_context_returns_summary():
+    from henge.scoping import finalize_context
+
+    async def fake_complete(model_id, req):
+        assert model_id == "anthropic/opus-4-7"
+        return _resp(
+            "User is X with constraints Y and Z. Inconsistency: claim A vs claim B.",
+            model_id,
+        )
+
+    with patch("henge.scoping.complete", new=AsyncMock(side_effect=fake_complete)):
+        ctx = await finalize_context("Original Q", "User answered: A=1, B=2.")
+
+    assert "User is X" in ctx.summary
+    assert ctx.opus_usage is not None
+    assert ctx.opus_usage["model"] == "anthropic/opus-4-7"
+
+
+@pytest.mark.asyncio
+async def test_finalize_context_skips_when_flag_false(monkeypatch):
+    from henge.scoping import finalize_context
+
+    monkeypatch.setattr("henge.scoping.ENABLE_CANONICAL_CONTEXT", False)
+    called = []
+
+    async def fake_complete(model_id, req):
+        called.append(model_id)
+        return _resp("UNUSED", model_id)
+
+    with patch("henge.scoping.complete", new=AsyncMock(side_effect=fake_complete)):
+        ctx = await finalize_context("Q", "raw user context here")
+
+    assert called == []  # Opus not invoked
+    assert ctx.summary == "raw user context here"  # passthrough
+    assert ctx.opus_usage is None
