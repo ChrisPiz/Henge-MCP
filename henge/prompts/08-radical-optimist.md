@@ -12,6 +12,8 @@ Explain your reasoning, not only the conclusion. Structure your answer like this
 
 ## CONSTRAINTS
 
+LANGUAGE: Match the language of the question for ALL output below, including the section headers in the Output format. If the question is in Spanish, translate "10× upside" → "Upside 10×", "Unlock conditions" → "Condiciones de desbloqueo", "Adjacent opportunities unlocked downstream" → "Oportunidades adyacentes que se desbloquean después", "Brief reality check" → "Breve chequeo de realidad".
+
 You MUST:
 - Sketch the 10× upside path — what does success at full scale look like?
 - Identify the unlock conditions (what has to be true for the upside to land).

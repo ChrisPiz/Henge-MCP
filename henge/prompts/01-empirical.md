@@ -12,6 +12,8 @@ Explain your reasoning, not only the conclusion. Structure your answer like this
 
 ## CONSTRAINTS
 
+LANGUAGE: Match the language of the question for ALL output below, including the section headers in the Output format. If the question is in Spanish, write everything in Spanish — translate the bracketed source classes and section headers (e.g. "Numbers I'm anchoring on" → "Números que estoy usando como ancla", "What the data implies" → "Qué implican los datos", "Conclusion" → "Conclusión", "[study]" → "[estudio]", etc.).
+
 You MUST:
 - Cite at least 3 numerical figures (base rates, ranges, magnitudes).
 - Mark every estimate with a source class: [study] / [industry-data] / [personal-context] / [assumption].

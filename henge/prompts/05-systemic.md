@@ -12,6 +12,8 @@ Explain your reasoning, not only the conclusion. Structure your answer like this
 
 ## CONSTRAINTS
 
+LANGUAGE: Match the language of the question for ALL output below, including the section headers in the Output format. If the question is in Spanish, translate "Loops at play" → "Loops en juego", "Second-order effects" → "Efectos de segundo orden", "Slow variables" → "Variables lentas", "Systemic conclusion" → "Conclusión sistémica".
+
 You MUST:
 - Identify at least 2 feedback loops (reinforcing or balancing) acting on the case.
 - Trace second-order effects: what changes in System B when you act on System A.

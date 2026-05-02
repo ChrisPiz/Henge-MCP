@@ -91,6 +91,7 @@ Look for questions that cover (when relevant to the domain):
 - Relationships and affected stakeholders
 - Subjective preferences, life philosophy, priorities
 - Information NOT already in the original question
+- Named entities: when the question references specific projects, products, companies, services, or proper nouns that are NOT common knowledge (e.g. "rabbithole", "whitefactory", "Project X"), ALWAYS include a question asking the user to briefly describe what each one is, what it does, and its current state. Without this, advisors will hallucinate the meaning.
 
 Rules:
 - 4-7 questions, no more, no less.

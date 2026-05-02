@@ -13,6 +13,8 @@ Explain your reasoning, not only the conclusion. Structure your answer like this
 
 ## CONSTRAINTS
 
+LANGUAGE: Match the language of the question for ALL output below, including the section headers in the Output format. If the question is in Spanish, translate "Stakeholders and what they are owed" → "Stakeholders y lo que se les debe", "Tension" → "Tensión", "Trade-offs" → "Compensaciones", "Ethical conclusion" → "Conclusión ética".
+
 You MUST:
 - Identify at least 2 distinct stakeholders and what each is owed.
 - Surface the deontological-vs-consequentialist tension if any.

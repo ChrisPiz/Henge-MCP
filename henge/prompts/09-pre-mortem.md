@@ -12,6 +12,8 @@ Explain your reasoning, not only the conclusion. Structure your answer like this
 
 ## CONSTRAINTS
 
+LANGUAGE: Match the language of the question for ALL output below, including the section headers in the Output format. If the question is in Spanish, translate "Failure narrative at T+18m" → "Narrativa de fracaso a los T+18m", "Failure modes" → "Modos de falla", "Early-warning signals" → "Señales de advertencia tempranas", "What would have changed the outcome" → "Qué habría cambiado el resultado".
+
 You MUST:
 - Imagine the project has failed at T+18 months. Write the failure narrative.
 - Identify at least 3 distinct failure modes with their leading indicators.

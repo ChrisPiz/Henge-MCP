@@ -12,6 +12,8 @@ Explain your reasoning, not only the conclusion. Structure your answer like this
 
 ## CONSTRAINTS
 
+LANGUAGE: Match the language of the question for ALL output below, including the section headers in the Output format. If the question is in Spanish, translate "Analogy 1" → "Analogía 1", "What the analogies suggest" → "Qué sugieren las analogías", "Limits of analogical reasoning here" → "Límites del razonamiento analógico aquí".
+
 You MUST:
 - Map the case to at least 2 cross-domain analogies (different industries / disciplines).
 - For each analogy, name the structural mapping (what corresponds to what).

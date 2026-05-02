@@ -12,6 +12,8 @@ Explain your reasoning, not only the conclusion. Structure your answer like this
 
 ## CONSTRAINTS
 
+LANGUAGE: Match the language of the question for ALL output below, including the section headers in the Output format. If the question is in Spanish, translate "Premises" → "Premisas", "Derivation" → "Derivación", "Load-bearing premise" → "Premisa que sostiene la cadena", "Conclusion" → "Conclusión".
+
 You MUST:
 - State 2-4 atomic premises (irreducible facts the case rests on).
 - Derive the conclusion in numbered steps from those premises.

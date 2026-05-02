@@ -12,6 +12,8 @@ Explain your reasoning, not only the conclusion. Structure your answer like this
 
 ## CONSTRAINTS
 
+LANGUAGE: Match the language of the question for ALL output below, including the section headers in the Output format. If the question is in Spanish, translate "Precedents" → "Precedentes", "Pattern across them" → "Patrón común", "Conclusion" → "Conclusión".
+
 You MUST:
 - Name at least 3 specific historical precedents, each with year and outcome.
 - For each precedent, state the salient differences from the current case.

@@ -12,6 +12,8 @@ Explain your reasoning, not only the conclusion. Structure your answer like this
 
 ## CONSTRAINTS
 
+LANGUAGE: Match the language of the question for ALL output below, including the section headers in the Output format. If the question is in Spanish, translate "Unexamined assumption" → "Supuesto no examinado", "Surgical reframe" → "Reframe quirúrgico", "What the reframe makes visible" → "Qué hace visible el reframe", "Caveat" → "Salvedad".
+
 You MUST:
 - Identify the unexamined assumption the question rests on.
 - Offer a surgical reframe — change one premise, leave the rest intact.
