@@ -1,10 +1,18 @@
-"""Loads prompts at import, runs 9 cognitive frames in parallel + tenth-man dissenter sequentially."""
+"""Loads prompts at import; runs the 9 frames in parallel with the Opus blind
+dissenter, then the gpt-5 informed dissenter sequentially. v0.6 dual tenth-man.
+"""
 import asyncio
 import hashlib
 from pathlib import Path
 
 from henge.config.frame_assignment import FRAME_MODEL_MAP, model_for
 from henge.providers import CompletionRequest, complete
+from henge.tenth_man import (
+    TenthManBlindResult,
+    TenthManInformedResult,
+    run_tenth_man_blind,
+    run_tenth_man_informed,
+)
 
 FRAMES = [
     "empirical",
@@ -173,6 +181,9 @@ async def run_agent(frame, question, context=None, temperature=TEMPERATURE):
     return resp.text, usage
 
 
+# Legacy v0.5 single-tenth-man path. Replaced in Phase 5 by run_tenth_man_blind
+# (Opus, sees no advisors) + run_tenth_man_informed (gpt-5, sees the 9 + blind).
+# Kept here as dead code until Phase 8 schema cleanup; do not call from run_agents.
 async def run_tenth_man(client, successful_frames, question, temperature=TEMPERATURE):
     """Receives only successful frame responses, returns ``(text, usage_dict)``.
 
@@ -192,25 +203,39 @@ async def run_tenth_man(client, successful_frames, question, temperature=TEMPERA
     return await _call_anthropic(client, OPUS, PROMPTS[TENTH_MAN], user, TENTH_MAX_TOKENS, temperature)
 
 
-async def run_agents(client, question, context=None, temperature=TEMPERATURE):
-    """Run all 9 frames in parallel via the registry, then tenth-man on ``client``.
+async def run_agents(question, context=None, temperature=TEMPERATURE):
+    """Run 9 frames in parallel with the blind tenth-man, then the informed
+    tenth-man sequentially.
 
-    The ``client`` parameter is ONLY used by the tenth-man path (still on
-    Anthropic Opus directly until Phase 5 introduces the dual blind/informed
-    refactor). The 9 frames each go through ``providers.complete()`` with
-    their assigned model id from ``FRAME_MODEL_MAP``.
+    Returns a dict::
 
-    Returns: list of (frame_name, response_text, status, usage_dict) tuples,
-    length 10. ``status`` is "ok" or "failed". On "failed", usage_dict is None.
+        {
+          "nine": list of (frame_name, response_text, status, usage_dict),
+          "blind": TenthManBlindResult,
+          "informed": TenthManInformedResult,
+        }
+
+    ``status`` is "ok" or "failed". On "failed", usage_dict is None.
 
     Raises RuntimeError if fewer than 8/9 frames succeeded — without enough
     cognitive coverage, the dissenter has no real consensus to attack.
+
+    The blind runs in parallel with the 9 (no dependency). Informed runs
+    sequentially after both finish (it sees the 9 + blind).
     """
-    tasks = [run_agent(frame, question, context, temperature) for frame in FRAMES]
-    raw = await asyncio.gather(*tasks, return_exceptions=True)
+    nine_coros = [run_agent(frame, question, context, temperature) for frame in FRAMES]
+    blind_coro = run_tenth_man_blind(question, context or "")
+
+    # Run nine + blind concurrently. Use asyncio.gather over a unified list
+    # so they actually run in parallel (rather than sequentially awaiting).
+    all_coros = nine_coros + [blind_coro]
+    raw = await asyncio.gather(*all_coros, return_exceptions=True)
+
+    nine_raw = raw[:9]
+    blind_raw = raw[9]
 
     nine = []
-    for frame, res in zip(FRAMES, raw):
+    for frame, res in zip(FRAMES, nine_raw):
         if isinstance(res, BaseException):
             nine.append((frame, f"[failed: {type(res).__name__}: {res}]", "failed", None))
         else:
@@ -225,7 +250,15 @@ async def run_agents(client, question, context=None, temperature=TEMPERATURE):
             f"Failed advisors: {failed_frames}"
         )
 
-    successful = [(f, r) for f, r, s, _ in nine if s == "ok"]
-    tenth_text, tenth_usage = await run_tenth_man(client, successful, question, temperature)
+    if isinstance(blind_raw, BaseException):
+        blind = TenthManBlindResult(
+            text=f"[failed: blind dissent crashed: {type(blind_raw).__name__}]",
+            opus_usage=None,
+        )
+    else:
+        blind = blind_raw
 
-    return nine + [(TENTH_MAN, tenth_text, "ok", tenth_usage)]
+    successful = [(f, r) for f, r, s, _ in nine if s == "ok"]
+    informed = await run_tenth_man_informed(question, context or "", successful, blind.text)
+
+    return {"nine": nine, "blind": blind, "informed": informed}
