@@ -74,7 +74,6 @@ def synthetic_embeddings_10():
     return np.vstack([base, outlier]).tolist()
 
 
-from contextlib import contextmanager
 from unittest.mock import patch as _patch
 
 from henge.providers.base import CompletionResponse as _CompletionResponse
