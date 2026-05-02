@@ -153,7 +153,11 @@ async def _compute_cfi_only(client, question, context, temperature):
         return {"error": "embed_failed", "reason": embed_result.get("reason")}
 
     n_compact_frames = sum(1 for _, _, s, _ in results[:9] if s == "ok")
-    proj = project_mds(embed_result["embeddings"], n_frames=n_compact_frames)
+    proj = project_mds(
+        embed_result["embeddings"],
+        n_frames=n_compact_frames,
+        embeddings_extra=embed_result.get("embeddings_extra"),
+    )
 
     distances_list = [None] * 10
     for compact_i, orig_i in enumerate(success_indices):
@@ -389,7 +393,11 @@ async def decide(
         return embed_result
 
     n_compact_frames = sum(1 for _, _, s, _ in results[:9] if s == "ok")
-    proj = project_mds(embed_result["embeddings"], n_frames=n_compact_frames)
+    proj = project_mds(
+        embed_result["embeddings"],
+        n_frames=n_compact_frames,
+        embeddings_extra=embed_result.get("embeddings_extra"),
+    )
 
     distances_list = [None] * 10
     coords_list = [None] * 10
