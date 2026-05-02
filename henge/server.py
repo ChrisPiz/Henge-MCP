@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
 from . import pricing
+from .providers.pricing import build_cost_breakdown
 from .agents import (
     OPUS,
     PROMPTS_HASH,
@@ -49,7 +50,7 @@ from .storage import make_report_dir, make_report_id, write_index, write_record
 from .updater import get_update_status, update_message
 from .viz import compute_cfi, consensus_verdict, render
 
-HENGE_VERSION = "0.5.0"
+HENGE_VERSION = "0.6.0"
 
 # Load .env from project root regardless of cwd (Claude Code may spawn subprocess elsewhere).
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -166,11 +167,18 @@ async def _compute_cfi_only(client, question, context, temperature):
     frame_distances_compact = [d for d in distances_list[:9] if d is not None]
     cfi_block = compute_cfi(distances_list[9], frame_distances_compact)
 
-    advisor_usages = [u for _, _, _, u in results]
-    cost = pricing.total_cost(
-        advisor_usages=advisor_usages,
-        scoping_usage=None,
+    advisor_usages_cfi = [u for _, _, _, u in results[:9]]
+    cost = build_cost_breakdown(
+        advisor_usages=advisor_usages_cfi,
+        blind_usage=blind.opus_usage,
+        informed_usage=None,
+        meta_usage=None,
+        canonical_usage=None,
+        scoping_haiku_usage=None,
+        scoping_adversarial_usage=None,
         consensus_usage=None,
+        claims_extract_usage=None,
+        claims_verify_usage=None,
         embedding_model=embed_result["model"],
         embedding_input_tokens=0,
     )
@@ -258,9 +266,9 @@ async def decide(
 
     client = AsyncAnthropic()
 
+    scoping_usage: dict | None = None
     if not context and not skip_scoping:
         scoping_result = await run_scoping(question)
-        scoping_usage: dict | None = None
         if scoping_result.haiku_usage:
             scoping_usage = dict(scoping_result.haiku_usage)
         if scoping_result.gpt5_usage:
@@ -405,14 +413,31 @@ async def decide(
         distances_list[orig_i] = proj["distance_to_centroid_of_9"][compact_i]
         coords_list[orig_i] = proj["coords_2d"][compact_i]
 
-    # Cost accounting — replaces the v0.4 hardcoded 0.65. Reads usage actually
-    # reported by the SDK; embedding tokens are not yet propagated from the
-    # embed module so the embedding line item reads 0 for now (TODO v0.6).
-    advisor_usages = [u for _, _, _, u in results]
-    cost_breakdown = pricing.total_cost(
+    # Phase 8: v0.6 cost_breakdown using canonical model ids — captures
+    # OpenAI gpt-5 spend (frames + informed + meta + adversarial scoping +
+    # claim verification) that the legacy anthropic-only path missed.
+    advisor_usages = [u for _, _, _, u in results[:9]]  # 9 frames only
+    # Reconstruct scoping breakdown from the merged scoping_usage dict.
+    # When run_scoping returned both Haiku + gpt-5, scoping_usage carries the
+    # merged anthropic/haiku-4-5 sum; the gpt-5 portion is lost in the
+    # legacy aggregation. For Phase 8 cost honesty, we attribute the merged
+    # blob to scoping_haiku and leave scoping_adversarial=None when we can't
+    # split it. Phase 3.4's shim returns the merged dict only.
+    scoping_haiku_usage = None
+    scoping_adversarial_usage = None
+    if scoping_usage and scoping_usage.get("model", "").startswith("anthropic/"):
+        scoping_haiku_usage = scoping_usage
+    cost_breakdown = build_cost_breakdown(
         advisor_usages=advisor_usages,
-        scoping_usage=None,  # scoping returns early before reaching here
+        blind_usage=blind.opus_usage,
+        informed_usage=informed.gpt5_usage,
+        meta_usage=meta.gpt5_usage if meta else None,
+        canonical_usage=canonical_usage,
+        scoping_haiku_usage=scoping_haiku_usage,
+        scoping_adversarial_usage=scoping_adversarial_usage,
         consensus_usage=consensus_usage,
+        claims_extract_usage=extract_claims_usage,
+        claims_verify_usage=verify_claims_usage,
         embedding_model=embed_result["model"],
         embedding_input_tokens=0,
     )
@@ -531,7 +556,7 @@ async def decide(
     report_id = make_report_id(question)
     report_dir = make_report_dir(report_id)
     payload = {
-        "schema_version": "2",
+        "schema_version": "0.6",
         "id": report_id,
         "timestamp": datetime.now().astimezone().isoformat(),
         "question": question,
