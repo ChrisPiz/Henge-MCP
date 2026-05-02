@@ -87,6 +87,8 @@ Classify along four axes:
 
 If meta_recommendation is "reformulate", set suggested_reformulation to a single-sentence rewrite of the question that would be well-formed.
 
+LANGUAGE: write the `reasoning` and `suggested_reformulation` STRINGS in the SAME LANGUAGE as the question. If the question is in Spanish, write those two fields in Spanish. The classification VALUES (decision_class, urgency, question_quality, meta_recommendation) stay in English — they are enums consumed by code.
+
 Output STRICT JSON. No prose. No markdown fence. Exact shape:
 {
   "decision_class": "<one of above>",
