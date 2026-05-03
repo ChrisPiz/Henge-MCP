@@ -173,6 +173,24 @@ For Claude Desktop, Cursor or any other MCP host, see the
 
 ---
 
+## Reading the report
+
+Every HTML report ships with two subtle highlighter-style markers and a
+toggle pill (bottom-left) to switch them on/off:
+
+- 🟢 **green (conclusion)** — first paragraph after a `Conclusión /
+  Inclinación neta / Recomendación / Veredicto / Síntesis / Takeaway`
+  heading. _What to believe._
+- 🔵 **cyan (action)** — `<strong>` blocks and bullets opening with
+  imperative verbs (`Priorizar / Asignar / Empaquetar / Posponer / Resistir /
+  Embeber / Decisión / Segmento / Asignación / Secuencia`, plus English
+  equivalents). _What to do._
+
+Conservative heuristic — passages without an explicit conclusion heading
+or imperative opener stay unmarked.
+
+---
+
 ## What it does not measure
 
 Henge is a structural tool with a pre-registered metric. It is **not** a

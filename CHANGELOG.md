@@ -8,6 +8,27 @@ documented under **Removed** with migration notes.
 
 ---
 
+## [Unreleased]
+
+### Added
+- **Takeaway markers in HTML reports** (`henge/viz.py::_apply_takeaway_markers`):
+  the rendered report now auto-highlights conclusions and actions with two
+  subtle highlighter-style marks. Conservative heuristic post-processor:
+  - `<mark class="tk-c">` (green) wraps the first paragraph after a conclusion
+    heading (`Conclusión / Inclinación neta / Recomendación / Veredicto /
+    Síntesis / Takeaway / Bottom line`).
+  - `<mark class="tk-a">` (cyan) wraps `<strong>` blocks and bullet lines
+    that open with imperative verbs (`Priorizar / Asignar / Empaquetar /
+    Posponer / Resistir / Embeber / Decisión / Segmento / Asignación /
+    Secuencia / Paquete N / Oferta N / Prioridad N / De-priorizar`,
+    plus English equivalents).
+  Idempotent — skips passages already containing a `tk-` marker.
+- **Toggle pill** (bottom-left of every report): one-click switch to
+  hide/show the markers when reading clean. CSS uses `body.tk-off` to flip
+  highlights to transparent without re-rendering.
+
+---
+
 ## [0.6.0] - 2026-05-02
 
 ### Added

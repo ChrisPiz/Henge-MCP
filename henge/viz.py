@@ -426,7 +426,94 @@ def _md_to_html(text: str) -> str:
             b = re.sub(r"(?<!\*)\*(?!\s)(.+?)(?<!\s)\*(?!\*)", r"<em>\1</em>", b)
             b = b.replace("\n", "<br>")
             out.append(f"<p>{b}</p>")
-    return "\n".join(out)
+    rendered = "\n".join(out)
+    return _apply_takeaway_markers(rendered)
+
+
+# Headings that signal "what follows is a conclusion" — first paragraph after
+# any of these gets a tk-c marker (qué creer).
+_TK_CONCLUSION_PATTERN = (
+    r"\b(?:conclusi[oó]n|inclinaci[oó]n\s+neta|recomendaci[oó]n|veredicto|"
+    r"resumen\s+ejecutivo|s[ií]ntesis|takeaway|bottom\s+line|"
+    r"conclusion|lean|verdict|recommendation|executive\s+summary)\b"
+)
+_TK_CONCLUSION_HEADINGS = re.compile(_TK_CONCLUSION_PATTERN, re.IGNORECASE)
+
+# Imperative/decision openers — bullet lines and strongs starting with these
+# get a tk-a marker (qué hacer).
+_TK_ACTION_OPENERS = re.compile(
+    r"^(?:prioriza\w*|asigna\w*|empaqueta\w*|posponga?|posponer|"
+    r"resista?|resistir|embebe\w*|embeber|decisi[oó]n|orden\s+de|"
+    r"segmento|asignaci[oó]n|secuencia|paquete\s+\d|oferta\s+\d|"
+    r"prioridad\s+\d|de[‑\-]priorizar|deprioriz\w*|"
+    r"prioritize|allocate|bundle|postpone|resist|embed|decide|"
+    r"sequence|package\s+\d|offer\s+\d|priority\s+\d|deprioritize)",
+    re.IGNORECASE,
+)
+
+
+def _apply_takeaway_markers(html: str) -> str:
+    """Heuristic post-processor: wrap conclusion/action passages with <mark>.
+
+    Conservative rules:
+    - First <p> after a heading matching _TK_CONCLUSION_HEADINGS → tk-c.
+    - Bullet lines (split by <br>) inside <p> that start with "- " followed by
+      an imperative opener → wrap that line with tk-a.
+    - <strong> opening with an imperative opener → wrap the strong with tk-a.
+
+    Idempotent: skips passages that already contain a tk- marker.
+    """
+    # Rule 1: first <p> after conclusion-style heading → tk-c
+    def _wrap_after_heading(match: re.Match) -> str:
+        head, gap, p_open, p_inner, p_close = match.group(1, 2, 3, 4, 5)
+        if "tk-" in p_inner or not p_inner.strip():
+            return match.group(0)
+        return f"{head}{gap}{p_open}<mark class=\"tk-c\">{p_inner}</mark>{p_close}"
+
+    pattern_heading = re.compile(
+        r"(<h[234][^>]*>[^<]*?(?:" + _TK_CONCLUSION_PATTERN + r")[^<]*?</h[234]>)"
+        r"(\s*)"
+        r"(<p[^>]*>)(.+?)(</p>)",
+        re.IGNORECASE | re.DOTALL,
+    )
+    html = pattern_heading.sub(_wrap_after_heading, html)
+
+    # Rule 2: <strong> opening with action verb → wrap whole strong (run first
+    # so Rule 3 sees the marker and skips the surrounding line).
+    def _wrap_strong(s_match: re.Match) -> str:
+        inner = s_match.group(1)
+        if _TK_ACTION_OPENERS.match(inner.strip()):
+            return f"<mark class=\"tk-a\"><strong>{inner}</strong></mark>"
+        return s_match.group(0)
+
+    html = re.sub(r"<strong>(.+?)</strong>", _wrap_strong, html)
+
+    # Rule 3: bullet lines inside <p> separated by <br> starting with action verbs
+    def _wrap_action_lines(p_match: re.Match) -> str:
+        p_open, inner, p_close = p_match.group(1, 2, 3)
+        lines = inner.split("<br>")
+        wrapped = []
+        for line in lines:
+            if "tk-" in line:
+                wrapped.append(line)
+                continue
+            stripped = line.lstrip()
+            test = re.sub(r"^[-•·]\s*(<strong>)?", "", stripped)
+            test = re.sub(r"^<strong>", "", test)
+            if _TK_ACTION_OPENERS.match(test):
+                wrapped.append(f"<mark class=\"tk-a\">{line}</mark>")
+            else:
+                wrapped.append(line)
+        return f"{p_open}{'<br>'.join(wrapped)}{p_close}"
+
+    html = re.sub(
+        r"(<p[^>]*>)(.+?)(</p>)",
+        _wrap_action_lines,
+        html,
+        flags=re.DOTALL,
+    )
+
+    return html
 
 
 # Per-axis labels + one-line value glosses for the meta-frame card.
@@ -2591,9 +2678,55 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     .consensus-d{{ text-align: left; }}
     .consensus-body{{ column-count: 1; }}
   }}
+
+  /* Takeaway markers — conclusion (qué creer) + action (qué hacer) */
+  mark.tk-c, mark.tk-a {{
+    background: transparent;
+    color: inherit;
+    padding: 0 2px;
+    border-radius: 2px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    transition: background 0.15s ease;
+  }}
+  mark.tk-c {{
+    background: linear-gradient(180deg, transparent 55%, rgba(190, 230, 90, 0.55) 55%);
+  }}
+  mark.tk-a {{
+    background: linear-gradient(180deg, transparent 55%, rgba(120, 200, 230, 0.45) 55%);
+    font-weight: 500;
+  }}
+  body.tk-off mark.tk-c, body.tk-off mark.tk-a {{ background: transparent; font-weight: inherit; }}
+
+  .tk-toggle {{
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 9999;
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(20, 20, 24, 0.85);
+    color: #f5f5f0;
+    font: 500 12px/1.2 system-ui, -apple-system, sans-serif;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    user-select: none;
+  }}
+  .tk-toggle:hover {{ background: rgba(40, 40, 48, 0.95); }}
+  .tk-toggle .dot-c {{ width: 10px; height: 10px; border-radius: 2px; background: rgba(190, 230, 90, 0.7); display: inline-block; }}
+  .tk-toggle .dot-a {{ width: 10px; height: 10px; border-radius: 2px; background: rgba(120, 200, 230, 0.6); display: inline-block; }}
+  .tk-legend {{ font-size: 10px; opacity: 0.75; }}
 </style>
 </head>
 <body>
+<button class="tk-toggle" onclick="document.body.classList.toggle('tk-off')" title="Alternar marcadores conclusión / acción">
+  <span class="dot-c"></span><span class="tk-legend">conclusión</span>
+  <span class="dot-a"></span><span class="tk-legend">acción</span>
+</button>
 <main data-screen-label="{t(locale, "screen_label")}">
 
   <header class="masthead">
