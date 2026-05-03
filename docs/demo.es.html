@@ -1,0 +1,2039 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Henge · Mapa de desacuerdo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  /* Resolve theme before first paint to avoid FOUC.
+     Stored preference wins; otherwise follow system. */
+  (function() {
+    var stored = null;
+    try { stored = localStorage.getItem('henge-theme'); } catch (e) {}
+    var theme = (stored === 'light' || stored === 'dark')
+      ? stored
+      : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  })();
+</script>
+<style>
+  :root{
+    --midnight-navy: #1b2540;
+    --deep-cosmos: #001033;
+    --chartreuse: #d0f100;
+    --ice-veil: #e0f6ff;
+    --amber-veil: #fff3e6;
+    --amber:      #d97a1c;
+    --amber-soft: rgba(217,122,28,0.12);
+    --amber-rule: rgba(217,122,28,0.32);
+    --ghost-canvas: #f8f9fc;
+    --pure: #ffffff;
+    --ash: #7c8293;
+    --storm: #596075;
+    --fog: #b1b5c0;
+
+    /* Tinted whites for use on dark surfaces */
+    --on-dark:        #fafeff;
+    --on-dark-92:     rgba(224,246,255,0.92);
+    --on-dark-78:     rgba(224,246,255,0.78);
+    --on-dark-62:     rgba(224,246,255,0.62);
+    --on-dark-32:     rgba(224,246,255,0.32);
+    --on-dark-border-strong: rgba(224,246,255,0.18);
+
+    /* Translucent surfaces */
+    --surface-glass-08:   rgba(255,255,255,0.08);
+    --surface-glass-soft: rgba(255,255,255,0.55);
+
+    /* Border/rule semantic aliases (for new components) */
+    --border-subtle: rgba(0,39,80,0.06);
+    --border-rule:   rgba(0,39,80,0.08);
+
+    /* Chartreuse alpha ramp */
+    --chartreuse-04: rgba(208,241,0,0.04);
+    --chartreuse-10: rgba(208,241,0,0.10);
+    --chartreuse-14: rgba(208,241,0,0.14);
+    --chartreuse-18: rgba(208,241,0,0.18);
+    --chartreuse-20: rgba(208,241,0,0.20);
+    --chartreuse-25: rgba(208,241,0,0.25);
+    --chartreuse-28: rgba(208,241,0,0.28);
+    --chartreuse-32: rgba(208,241,0,0.32);
+    --chartreuse-55: rgba(208,241,0,0.55);
+
+    /* Glow — used on tenth-quote panel */
+    --glow-chartreuse:       0 0 0 1px var(--chartreuse-20), 0 0 24px var(--chartreuse-18), 0 0 60px var(--chartreuse-10);
+    --glow-chartreuse-hover: 0 0 0 1px var(--chartreuse-32), 0 0 28px var(--chartreuse-28), 0 0 70px var(--chartreuse-14);
+
+    /* Map line tint (midnight-navy alpha) */
+    --navy-08: rgba(27,37,64,0.08);
+
+    --shadow-xl: rgba(0,39,80,0.03) 0 56px 72px -16px, rgba(0,39,80,0.03) 0 32px 32px -16px, rgba(0,39,80,0.04) 0 6px 12px -3px, rgba(0,39,80,0.04) 0 0 0 1px;
+    --shadow-md: rgba(0,39,80,0.08) 0 6px 16px -3px, rgba(0,39,80,0.04) 0 0 0 1px;
+    --shadow-subtle: rgba(255,255,255,0.72) 0 1px 1px 0 inset, rgba(4,33,80,0.02) 0 8px 16px 0, rgba(4,33,80,0.03) 0 4px 12px 0, rgba(4,33,80,0.06) 0 1px 2px 0, rgba(4,33,80,0.04) 0 0 0 1px;
+    --ring-subtle: rgba(0,39,80,0.04) 0 0 0 1px;
+    --ring-rule:   rgba(0,39,80,0.06) 0 0 0 1px;
+
+    --sans:  'Source Sans 3', 'Source Sans Pro', ui-sans-serif, system-ui, sans-serif;
+    --serif: 'Fraunces', Georgia, serif;
+    --mono:  'JetBrains Mono', ui-monospace, monospace;
+
+    color-scheme: light dark;
+  }
+
+  /* Dark mode — token flips live alongside :root above; component overrides
+     are at the bottom of this stylesheet so they win over base declarations. */
+
+  *{ box-sizing: border-box; }
+  html, body{ margin:0; padding:0; }
+  body{
+    background: var(--ghost-canvas);
+    color: var(--midnight-navy);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.5;
+    letter-spacing: -0.16px;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection{ background: var(--chartreuse); color: var(--midnight-navy); }
+
+  /* Compact masthead */
+  .masthead{
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 18px 32px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--border-rule);
+  }
+  .logo{
+    display:flex; align-items:center; gap: 10px;
+    font-family: var(--serif);
+    font-weight: 500; font-size: 18px; letter-spacing: -0.01em;
+    color: var(--midnight-navy);
+  }
+  .logo .mk{
+    width: 22px; height: 22px; border-radius: 6px;
+    background: var(--midnight-navy);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--chartreuse);
+    font-family: var(--mono); font-size: 11px; font-weight: 500;
+  }
+  .mast-meta{
+    font-family: var(--mono); font-size: 12px;
+    color: var(--storm); letter-spacing: 0.02em;
+  }
+  .mast-meta b{ color: var(--midnight-navy); font-weight: 500; }
+  .mast-meta .sep{ color: var(--fog); margin: 0 8px; }
+  .mast-index-btn{
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid rgba(0,39,80,0.15);
+    background: white;
+    color: var(--midnight-navy);
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: background 120ms ease, border-color 120ms ease;
+  }
+  .mast-index-btn:hover{
+    background: var(--midnight-navy);
+    color: var(--chartreuse);
+    border-color: var(--midnight-navy);
+  }
+  .mast-index-btn svg{ flex-shrink: 0; }
+  .mast-actions{ display: inline-flex; align-items: center; gap: 8px; }
+
+  /* Hero */
+  .hero{
+    max-width: 1200px;
+    margin: 24px auto 0;
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: var(--shadow-md);
+    color: var(--on-dark);
+    isolation: isolate;
+  }
+  .hero-bg{
+    position: absolute; inset: 0;
+    background-image: url('assets/header-painting.jpg');
+    background-size: cover;
+    background-position: center 60%;
+    z-index: -2;
+  }
+  .hero::after{
+    content:"";
+    position:absolute; inset:0; z-index:-1;
+    background:
+      linear-gradient(180deg, rgba(0,16,51,0.18) 0%, rgba(0,16,51,0.55) 60%, rgba(0,16,51,0.82) 100%),
+      linear-gradient(90deg, rgba(0,16,51,0.55) 0%, rgba(0,16,51,0.10) 50%);
+  }
+  .hero-inner{
+    padding: 40px;
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 40px;
+    align-items: center;
+  }
+  h1.hero-h{
+    margin: 0 0 14px;
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(30px, 3.6vw, 44px);
+    line-height: 1.05;
+    letter-spacing: -0.4px;
+    text-wrap: balance;
+    max-width: 20ch;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.18);
+  }
+  .hero-h em{ font-style: italic; color: var(--chartreuse); }
+  .hero-dek{
+    margin: 0;
+    max-width: 52ch;
+    font-size: 15.5px; line-height: 1.5;
+    color: var(--on-dark-92);
+    letter-spacing: -0.09px;
+  }
+
+  /* Hero verdict eyebrow */
+  .hero-verdict{
+    display: inline-flex; gap: 8px; align-items: baseline;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--on-dark-78);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 14px;
+  }
+  .hero-verdict b{ color: var(--chartreuse); font-weight: 500; }
+  .hero-verdict .sep{ color: var(--on-dark-32); }
+
+  /* Hero quote panels — translucent glass over the painting */
+  .hero-quotes{
+    display: grid;
+    gap: 12px;
+  }
+  .hero-quote{
+    display: block;
+    background: var(--surface-glass-08);
+    backdrop-filter: blur(14px) saturate(120%);
+    -webkit-backdrop-filter: blur(14px) saturate(120%);
+    border: 1px solid var(--on-dark-border-strong);
+    border-radius: 16px;
+    padding: 14px 18px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease;
+  }
+  .hero-quote:hover{ transform: translateY(-1px); }
+  .hero-quote:focus-visible{ outline: 2px solid var(--chartreuse); outline-offset: 3px; }
+  .hero-quote.consensus:hover{ border-color: var(--on-dark-32); }
+  .hero-quote.tenth{
+    background: linear-gradient(180deg, var(--chartreuse-04), var(--surface-glass-08));
+    border-color: var(--chartreuse-55);
+    box-shadow: var(--glow-chartreuse);
+  }
+  .hero-quote.tenth:hover{
+    border-color: var(--chartreuse);
+    box-shadow: var(--glow-chartreuse-hover);
+  }
+  .hero-quote .mark{
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--on-dark-78);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  .hero-quote.consensus .mark .d{
+    width: 6px; height: 6px; border-radius: 9999px;
+    background: var(--on-dark-32);
+  }
+  .hero-quote.tenth .mark .d{
+    width: 7px; height: 7px; border-radius: 9999px;
+    background: var(--chartreuse);
+    box-shadow: 0 0 0 2px var(--chartreuse-25);
+  }
+  .hero-quote.tenth .mark .ord{ color: var(--chartreuse); font-weight: 500; }
+  .hero-q{
+    margin: 0 0 8px;
+    font-family: var(--serif); font-weight: 400;
+    font-size: 16px; line-height: 1.3;
+    letter-spacing: -0.16px;
+    color: var(--on-dark);
+    text-wrap: balance;
+    quotes: none;
+  }
+  .hero-q em{ font-style: italic; color: var(--chartreuse); }
+  .hero-quote .cite{
+    font-family: var(--mono); font-size: 11px;
+    color: var(--on-dark-62);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  /* Sections */
+  .page{ background: var(--ghost-canvas); }
+  .section{
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 80px 32px 0;
+  }
+  .sec-head{
+    display: flex; align-items: end; justify-content: space-between; gap: 24px;
+    margin-bottom: 28px;
+  }
+  .sec-head .l{ max-width: 64ch; }
+  .sec-head-question{ align-items: start; }
+  .sec-head-question .l{ flex: 0 0 auto; max-width: 38%; }
+  .sec-head-question .r{ flex: 1 1 auto; max-width: 62%; padding-top: 6px; }
+  @media (max-width: 820px){
+    .sec-head-question{ flex-direction: column; }
+    .sec-head-question .l, .sec-head-question .r{ max-width: none; }
+  }
+  .meta-card{ margin: 0 0 24px; }
+  .sec-eyebrow{
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 12px;
+    color: var(--storm);
+    text-transform: uppercase; letter-spacing: 0.04em;
+    margin-bottom: 12px;
+  }
+  .sec-eyebrow .n{
+    background: var(--midnight-navy); color: var(--pure);
+    padding: 2px 7px; border-radius: 9999px;
+    font-size: 11.5px; letter-spacing: 0.06em;
+  }
+  .sec-head h2{
+    margin: 0;
+    font-family: var(--serif); font-weight: 400;
+    font-size: 40px; letter-spacing: -0.4px;
+    line-height: 1.05; color: var(--midnight-navy);
+    text-wrap: balance;
+  }
+  .sec-head h2 em{ font-style: italic; color: var(--midnight-navy); }
+  .sec-head .sub{
+    margin: 12px 0 0;
+    font-size: 16px; color: var(--storm); letter-spacing: -0.16px;
+  }
+  .question-pull{
+    margin: 0;
+    padding: 6px 0 6px 22px;
+    border-left: 3px solid var(--chartreuse);
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 1.4;
+    letter-spacing: -0.18px;
+    color: var(--midnight-navy);
+    text-wrap: balance;
+    max-width: 64ch;
+  }
+
+  /* Map card */
+  .map-card{
+    background: var(--pure);
+    border-radius: 20px;
+    box-shadow: var(--shadow-xl);
+    overflow: hidden;
+  }
+  .map-top{
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .map-top .l{ display:flex; align-items:center; gap: 14px; }
+  .map-top .pill{
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--ghost-canvas);
+    border-radius: 9999px;
+    padding: 5px 12px;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--midnight-navy);
+    box-shadow: var(--ring-subtle);
+  }
+  .map-top .pill .d{ width: 6px; height: 6px; border-radius: 9999px; background: var(--chartreuse); }
+  .map-top .meta{
+    font-family: var(--mono); font-size: 12px; color: var(--storm);
+  }
+  .legend-row{ display:flex; gap: 16px; align-items: center; font-size: 14px; color: var(--storm); }
+  .legend-row .ld{
+    display: inline-block; width: 9px; height: 9px;
+    border-radius: 9999px; margin-right: 7px; transform: translateY(-1px);
+  }
+  .legend-row .ld.t{ background: var(--chartreuse); box-shadow: 0 0 0 3px rgba(208,241,0,0.18); }
+  .legend-row .ld.n{ background: var(--midnight-navy); }
+
+  .map-svg{
+    aspect-ratio: 16 / 8.5;
+    background: var(--pure);
+    position: relative;
+  }
+  .map-svg svg{ width: 100%; height: 100%; display: block; }
+
+  .map-foot{
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 0;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .map-foot .cell{
+    padding: 16px 20px;
+    border-right: 1px solid var(--border-subtle);
+  }
+  .map-foot .cell:last-child{ border-right: 0; }
+  .map-foot .cell .lbl{
+    font-family: var(--mono); font-size: 11px;
+    color: var(--storm); text-transform: uppercase;
+    letter-spacing: 0.04em; margin-bottom: 6px;
+  }
+  .map-foot .cell .val{
+    font-family: var(--serif); font-weight: 400;
+    font-size: 22px; letter-spacing: -0.22px;
+    color: var(--midnight-navy);
+    font-variant-numeric: tabular-nums;
+  }
+  .map-foot .cell .val .badge{
+    display: inline-block;
+    background: var(--chartreuse); color: var(--midnight-navy);
+    font-family: var(--mono); font-size: 11px; font-weight: 500;
+    padding: 2px 8px; border-radius: 9999px;
+    margin-left: 8px; letter-spacing: 0.04em; text-transform: uppercase;
+    transform: translateY(-2px);
+  }
+  .map-foot .cell .sub{
+    margin-top: 4px;
+    font-size: 14px; color: var(--storm);
+  }
+
+  /* Consensus card (navy-themed) */
+  .consensus-card{
+    background: linear-gradient(180deg, var(--ice-veil) 0%, var(--pure) 100%);
+    border-radius: 20px;
+    box-shadow: var(--shadow-xl);
+    overflow: hidden;
+    margin-top: 24px;
+    position: relative;
+  }
+  .consensus-top{
+    display: grid; grid-template-columns: 1fr auto;
+    align-items: start; gap: 24px;
+    padding: 24px 28px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .consensus-tag{
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--midnight-navy); color: var(--pure);
+    border-radius: 9999px; padding: 4px 10px;
+    font-family: var(--mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 12px;
+  }
+  .consensus-tag .d{ width: 5px; height: 5px; border-radius: 9999px; background: var(--chartreuse); }
+  .consensus-lead{
+    margin: 0 0 8px;
+    font-size: 14px;
+    color: var(--storm);
+    letter-spacing: -0.09px;
+  }
+  .consensus-top h3{
+    margin: 0;
+    font-family: var(--serif); font-weight: 400;
+    font-size: 28px; letter-spacing: -0.4px; line-height: 1.08;
+    color: var(--midnight-navy);
+    text-wrap: balance;
+    max-width: 28ch;
+  }
+  .consensus-d{
+    text-align: right;
+    background: var(--surface-glass-soft);
+    backdrop-filter: blur(4px);
+    border-radius: 16px;
+    padding: 14px 18px;
+    box-shadow: var(--ring-rule);
+    font-family: var(--mono); font-size: 11px;
+    color: var(--storm);
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .consensus-d b{
+    display: block;
+    font-family: var(--serif); font-weight: 400;
+    font-size: 28px; letter-spacing: -0.4px; line-height: 1;
+    color: var(--midnight-navy);
+    margin-bottom: 4px;
+    text-transform: none;
+  }
+  .consensus-body{
+    padding: 28px 32px;
+    column-count: 2;
+    column-gap: 40px;
+    column-rule: 1px solid var(--border-subtle);
+    font-size: 16px;
+    line-height: 1.55;
+    color: var(--midnight-navy);
+    letter-spacing: -0.16px;
+  }
+  .consensus-body p{ margin: 0 0 12px; break-inside: avoid-column; }
+  .consensus-body p:last-child{ margin-bottom: 0; }
+  .consensus-body h2,
+  .consensus-body h3,
+  .consensus-body h4{
+    margin: 0 0 10px;
+    font-family: var(--mono); font-weight: 500;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--storm);
+    break-after: avoid;
+  }
+  .consensus-body h2:not(:first-child),
+  .consensus-body h3:not(:first-child),
+  .consensus-body h4:not(:first-child){ margin-top: 22px; }
+  .consensus-body strong{ font-weight: 600; color: var(--midnight-navy); }
+  .consensus-body em{ font-style: italic; color: var(--midnight-navy); }
+  .consensus-body .pull{
+    margin: 16px 0;
+    background: var(--ghost-canvas);
+    border-radius: 16px;
+    padding: 14px 18px;
+    box-shadow: var(--ring-subtle);
+    font-family: var(--serif); font-weight: 400;
+    font-size: 18px; line-height: 1.35; letter-spacing: -0.18px;
+    color: var(--midnight-navy);
+    break-inside: avoid-column;
+  }
+
+  /* Meta-frame audit card */
+  .meta-card{
+    margin: 16px 0 24px;
+    padding: 18px 22px;
+    border: 1px solid var(--border-rule);
+    border-radius: 12px;
+    background: var(--surface-glass-soft);
+    box-shadow: var(--ring-rule);
+  }
+  .meta-card h3{ margin: 0 0 12px; font-family: var(--sans); font-size: 12px; font-weight: 600; color: var(--storm); text-transform: uppercase; letter-spacing: 0.06em; }
+  .meta-body{
+    display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 24px;
+    align-items: start;
+  }
+  .meta-grid{
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+  }
+  @media (max-width: 820px){
+    .meta-body{ grid-template-columns: 1fr; gap: 14px; }
+  }
+  @media (max-width: 480px){ .meta-grid{ grid-template-columns: 1fr; } }
+  .meta-cell{
+    padding: 10px 12px; border-radius: 10px;
+    background: rgba(255,255,255,0.55);
+    border: 1px solid var(--border-subtle);
+    font-family: var(--sans);
+  }
+  .meta-cell-axis{
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--storm); margin-bottom: 4px;
+  }
+  .meta-cell-value{
+    font-size: 14px; font-weight: 600; color: var(--midnight-navy);
+    line-height: 1.2; margin-bottom: 4px;
+  }
+  .meta-cell-hint{
+    font-size: 12px; line-height: 1.4; color: var(--storm);
+  }
+  .meta-cell-ok{    background: rgba(0,150,80,0.10);  border-color: rgba(0,150,80,0.28); }
+  .meta-cell-ok .meta-cell-value{ color: #047a47; }
+  .meta-cell-warn{  background: var(--chartreuse-14); border-color: var(--chartreuse-32); }
+  .meta-cell-warn .meta-cell-value{ color: var(--midnight-navy); }
+  .meta-cell-stop{  background: rgba(200,40,40,0.08); border-color: rgba(200,40,40,0.28); }
+  .meta-cell-stop .meta-cell-value{ color: #b32424; }
+  .meta-reasoning{ font-size: 15px; line-height: 1.55; color: var(--storm); font-family: var(--sans); }
+  .meta-reasoning p{ margin: 0 0 10px; }
+  .meta-reasoning p:last-child{ margin-bottom: 0; }
+  [data-theme="dark"] .meta-card{ background: var(--surface-glass-08); border-color: var(--on-dark-border-strong); }
+  [data-theme="dark"] .meta-card h3{ color: var(--on-dark-78); }
+  [data-theme="dark"] .meta-cell{ background: rgba(0,0,0,0.20); border-color: var(--on-dark-border-strong); }
+  [data-theme="dark"] .meta-cell-value{ color: var(--on-dark); }
+  [data-theme="dark"] .meta-cell-hint{ color: var(--on-dark-78); }
+  [data-theme="dark"] .meta-cell-ok{    background: rgba(0,150,80,0.18);  border-color: rgba(0,150,80,0.40); }
+  [data-theme="dark"] .meta-cell-warn{  background: var(--chartreuse-14); border-color: var(--chartreuse-32); }
+  [data-theme="dark"] .meta-cell-stop{  background: rgba(200,40,40,0.18); border-color: rgba(200,40,40,0.40); }
+  [data-theme="dark"] .meta-reasoning{ color: var(--on-dark-92); }
+
+  /* Tenth-man feature card — amber-themed counterpoint to the celeste consensus */
+  .tenth-card{
+    background: linear-gradient(180deg, var(--amber-veil) 0%, var(--pure) 100%);
+    border-radius: 20px;
+    box-shadow: var(--shadow-xl);
+    overflow: hidden;
+    margin-top: 24px;
+    position: relative;
+  }
+  .tenth-top{
+    display: grid; grid-template-columns: 1fr auto;
+    align-items: start; gap: 24px;
+    padding: 24px 28px;
+    border-bottom: 1px solid var(--amber-rule);
+  }
+  .tenth-tag{
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--midnight-navy); color: var(--amber);
+    border-radius: 9999px; padding: 4px 10px;
+    font-family: var(--mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 12px;
+  }
+  .tenth-tag .d{ width: 5px; height: 5px; border-radius: 9999px; background: var(--amber); }
+  .tenth-top h3 em{ color: var(--amber); }
+  .tenth-lead{
+    margin: 0 0 8px;
+    font-size: 14px;
+    color: var(--storm);
+    letter-spacing: -0.09px;
+  }
+  .tenth-top h3{
+    margin: 0;
+    font-family: var(--serif); font-weight: 400;
+    font-size: 32px; letter-spacing: -0.4px; line-height: 1.05;
+    color: var(--midnight-navy);
+    text-wrap: balance;
+    max-width: 24ch;
+  }
+  .tenth-top h3 em{ font-style: italic; color: var(--amber); }
+
+  .tenth-d-stat{
+    text-align: right;
+    background: var(--amber-soft);
+    border-radius: 16px;
+    padding: 14px 18px;
+    box-shadow: 0 0 0 1px var(--amber-rule);
+    font-family: var(--mono); font-size: 11px;
+    color: var(--storm);
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .tenth-d-stat b{
+    display: block;
+    font-family: var(--serif); font-weight: 400;
+    font-size: 32px; letter-spacing: -0.4px; line-height: 1;
+    color: var(--midnight-navy);
+    margin-bottom: 4px;
+    text-transform: none;
+  }
+
+  .tenth-body{
+    padding: 24px 28px;
+  }
+  .tenth-body h4{
+    margin: 24px 0 8px;
+    font-family: var(--mono); font-weight: 500;
+    font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.04em; color: var(--storm);
+  }
+  .tenth-body h4:first-child{ margin-top: 0; }
+  .tenth-body h4 .ord{ color: var(--midnight-navy); margin-right: 8px; }
+  .tenth-body p{
+    margin: 0 0 12px;
+    font-size: 16px; line-height: 1.5;
+    color: var(--midnight-navy);
+    letter-spacing: -0.16px;
+  }
+  .tenth-body strong{ font-weight: 600; }
+  .tenth-body em{ font-style: italic; color: var(--midnight-navy); }
+  .tenth-body .pull{
+    margin: 16px 0;
+    background: var(--ghost-canvas);
+    border-radius: 16px;
+    padding: 18px 20px;
+    box-shadow: var(--ring-subtle);
+    font-family: var(--serif); font-weight: 400;
+    font-size: 22px; line-height: 1.29; letter-spacing: -0.22px;
+    color: var(--midnight-navy);
+  }
+  .tenth-body .pull::before{
+    content:"\201C";
+    font-family: var(--serif);
+    font-size: 36px; line-height: 0;
+    margin-right: 6px;
+    color: var(--chartreuse);
+    vertical-align: -8px;
+  }
+
+  .modes{
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 12px; margin-top: 12px;
+  }
+  .mode{
+    background: var(--ghost-canvas);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: var(--ring-subtle);
+  }
+  .mode .ord{
+    font-family: var(--mono); font-size: 11px;
+    color: var(--storm);
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .mode h5{
+    margin: 8px 0 6px;
+    font-family: var(--sans); font-weight: 480;
+    font-size: 17px; letter-spacing: -0.09px;
+    color: var(--midnight-navy);
+  }
+  .mode p{
+    margin: 0;
+    font-size: 14px; line-height: 1.5;
+    color: var(--storm); letter-spacing: -0.16px;
+  }
+
+  .tenth-foot{
+    padding: 14px 28px;
+    border-top: 1px solid var(--border-subtle);
+    background: var(--ghost-canvas);
+    display: flex; justify-content: space-between;
+    font-family: var(--mono); font-size: 12px;
+    color: var(--storm);
+  }
+  .tenth-foot b{ color: var(--midnight-navy); }
+
+  /* Informed dissent card (Phase 5 cross-lab reconciliation) */
+  .informed-card{
+    margin: 16px 0 0;
+    padding: 20px 22px;
+    border: 1px solid var(--border-rule);
+    border-radius: 14px;
+    background: var(--surface-glass-soft);
+    box-shadow: var(--ring-rule);
+  }
+  .informed-top{ margin-bottom: 14px; }
+  .informed-tag{
+    display: inline-block; padding: 2px 8px; margin-bottom: 6px;
+    font-size: 11px; font-family: var(--mono); letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--midnight-navy);
+    background: var(--chartreuse); border-radius: 999px;
+  }
+  .informed-top h3{ margin: 0 0 4px; font-family: var(--serif); font-size: 22px; font-weight: 500; color: var(--midnight-navy); }
+  .informed-sub{ margin: 0; font-size: 14px; color: var(--storm); font-family: var(--sans); }
+  .informed-body{ font-family: var(--sans); }
+  .informed-body p{ margin: 0 0 12px; line-height: 1.55; color: var(--midnight-navy); }
+  .informed-grid{
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px;
+  }
+  .informed-col{
+    background: var(--ghost-canvas);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: var(--ring-subtle);
+  }
+  .informed-col .ord{
+    font-family: var(--mono); font-size: 11px;
+    color: var(--storm);
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .informed-col h5{
+    margin: 8px 0 10px;
+    font-family: var(--sans); font-weight: 480;
+    font-size: 17px; letter-spacing: -0.09px;
+    color: var(--midnight-navy);
+  }
+  .informed-list{ margin: 0; padding-left: 16px; font-size: 14px; line-height: 1.45; color: var(--midnight-navy); }
+  .informed-list li{ margin-bottom: 6px; }
+  .informed-list.discarded li{ color: var(--storm); text-decoration: line-through; opacity: 0.75; }
+  @media (max-width: 720px){ .informed-grid{ grid-template-columns: 1fr; } }
+  [data-theme="dark"] .informed-card{ background: var(--surface-glass-08); border-color: var(--on-dark-border-strong); }
+  [data-theme="dark"] .informed-top h3{ color: var(--on-dark); }
+  [data-theme="dark"] .informed-sub{ color: var(--on-dark-78); }
+  [data-theme="dark"] .informed-body p{ color: var(--on-dark-92); }
+  [data-theme="dark"] .informed-col h5{ color: var(--on-dark); }
+  [data-theme="dark"] .informed-list{ color: var(--on-dark-92); }
+  [data-theme="dark"] .informed-list.discarded li{ color: var(--on-dark-62); }
+
+  /* Claims panel */
+  .claims-panel{
+    margin: 16px 0 0;
+    padding: 18px 22px;
+    border: 1px solid var(--border-rule);
+    border-radius: 14px;
+    background: var(--surface-glass-soft);
+    box-shadow: var(--ring-rule);
+    font-family: var(--sans);
+  }
+  .claims-head h3{ margin: 0 0 4px; font-family: var(--serif); font-size: 20px; font-weight: 500; color: var(--midnight-navy); }
+  .claims-sub{ margin: 0 0 12px; font-size: 14px; color: var(--storm); }
+  .claims-grid{
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+  }
+  @media (max-width: 820px){ .claims-grid{ grid-template-columns: 1fr; } }
+  .claim-card{
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 14px 16px; border: 1px solid var(--border-subtle); border-radius: 12px;
+    background: white;
+  }
+  .claim-head{ display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+  .claim-type{
+    font-size: 11px; font-family: var(--mono); text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--storm);
+    padding: 2px 6px; border: 1px solid var(--border-subtle); border-radius: 999px;
+  }
+  .claim-strength{
+    font-size: 11px; font-family: var(--mono); text-transform: uppercase;
+    letter-spacing: 0.06em; padding: 2px 8px; border-radius: 999px;
+    white-space: nowrap;
+  }
+  .claim-strength-strong{      background: rgba(0,150,80,0.12);   color: #047a47;  border: 1px solid rgba(0,150,80,0.30); }
+  .claim-strength-moderate{    background: var(--chartreuse-14);  color: var(--midnight-navy); border: 1px solid var(--chartreuse-32); }
+  .claim-strength-weak{        background: rgba(220,140,0,0.10);  color: #a36800;  border: 1px solid rgba(220,140,0,0.30); }
+  .claim-strength-unsupported{ background: rgba(200,40,40,0.10);  color: #b32424;  border: 1px solid rgba(200,40,40,0.32); }
+  .claim-text{ margin: 0; font-size: 14px; line-height: 1.5; color: var(--midnight-navy); }
+  .claim-strip{
+    display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px;
+    margin-top: 2px;
+  }
+  .claim-dot{
+    display: flex; align-items: center; justify-content: center;
+    height: 22px; border-radius: 6px;
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.04em;
+    border: 1px solid var(--border-subtle);
+    cursor: default;
+  }
+  .claim-dot-support{ background: rgba(0,150,80,0.18);  color: #047a47;  border-color: rgba(0,150,80,0.40); font-weight: 600; }
+  .claim-dot-contest{ background: rgba(200,40,40,0.18); color: #b32424;  border-color: rgba(200,40,40,0.45); font-weight: 600; text-decoration: line-through; }
+  .claim-dot-neutral{ background: transparent;          color: var(--fog); border-color: var(--border-subtle); }
+  [data-theme="dark"] .claims-panel{ background: var(--surface-glass-08); border-color: var(--on-dark-border-strong); }
+  [data-theme="dark"] .claims-head h3{ color: var(--on-dark); }
+  [data-theme="dark"] .claims-sub{ color: var(--on-dark-78); }
+  [data-theme="dark"] .claim-card{ background: rgba(0,0,0,0.20); border-color: var(--on-dark-border-strong); }
+  [data-theme="dark"] .claim-text{ color: var(--on-dark-92); }
+  [data-theme="dark"] .claim-type{ color: var(--on-dark-78); border-color: var(--on-dark-border-strong); }
+  [data-theme="dark"] .claim-dot-neutral{ color: var(--on-dark-32); border-color: var(--on-dark-border-strong); }
+
+  /* Frames table */
+  .frames{
+    margin-top: 4px;
+    background: var(--pure);
+    border-radius: 20px;
+    box-shadow: var(--shadow-xl);
+    overflow: hidden;
+  }
+  .frames-head{
+    display: grid;
+    grid-template-columns: 60px 220px 1fr 160px 100px 24px;
+    gap: 16px;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--ghost-canvas);
+    font-family: var(--mono); font-size: 11px;
+    color: var(--storm);
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .frame{
+    border-bottom: 1px solid var(--border-subtle);
+    cursor: pointer;
+    transition: background .15s ease;
+  }
+  .frame:last-child{ border-bottom: 0; }
+  .frame:hover{ background: var(--ghost-canvas); }
+  .frame.open{ background: var(--ghost-canvas); }
+  .frame-row{
+    display: grid;
+    grid-template-columns: 60px 220px 1fr 160px 100px 24px;
+    gap: 16px;
+    align-items: center;
+    padding: 16px 24px;
+  }
+  .f-idx{
+    font-family: var(--mono); font-size: 12px; color: var(--storm);
+  }
+  .f-name{
+    display: inline-flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+    font-family: var(--sans); font-weight: 480;
+    font-size: 17px; letter-spacing: -0.09px;
+    color: var(--midnight-navy);
+  }
+  .f-name .f-mark{
+    font-family: var(--mono); font-size: 11px; font-weight: 500;
+    color: var(--midnight-navy);
+    background: var(--chartreuse);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    padding: 2px 7px; border-radius: 9999px;
+    transform: translateY(-1px);
+  }
+  .f-name .f-mark.farthest{
+    background: transparent; color: var(--storm);
+    box-shadow: var(--ring-rule);
+  }
+  .f-lean{
+    font-family: var(--serif); font-style: italic;
+    font-weight: 400; font-size: 14.5px;
+    line-height: 1.35; letter-spacing: -0.09px;
+    color: var(--storm);
+    max-width: 38ch;
+    text-wrap: balance;
+  }
+  .f-lean strong{ color: var(--midnight-navy); font-weight: 500; font-style: normal; }
+  .f-bar{
+    height: 6px; background: var(--navy-08);
+    border-radius: 9999px;
+    position: relative; overflow: hidden;
+  }
+  .f-bar > i{
+    display: block; height: 100%;
+    background: var(--midnight-navy);
+    border-radius: 9999px;
+  }
+  .f-d{
+    font-family: var(--mono); font-size: 14px;
+    color: var(--midnight-navy);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .f-d b{ font-weight: 500; }
+  .f-caret{
+    color: var(--storm);
+    font-family: var(--mono);
+    transition: transform .15s ease;
+    text-align: center;
+  }
+  .frame.open .f-caret{ transform: rotate(90deg); }
+
+  .f-body{
+    display: none;
+    padding: 4px 24px 22px 304px;
+    max-width: 100%;
+  }
+  .frame.open .f-body{ display: block; }
+  .f-body p{
+    margin: 0 0 10px;
+    font-size: 15px; line-height: 1.55;
+    color: var(--storm); letter-spacing: -0.16px;
+  }
+  .f-body strong{ color: var(--midnight-navy); font-weight: 500; }
+  .f-body em{ color: var(--midnight-navy); font-style: italic; }
+  .f-body .pull{
+    margin: 12px 0;
+    padding: 4px 0 4px 14px;
+    border-left: 2px solid var(--midnight-navy);
+    font-family: var(--serif); font-style: italic;
+    font-size: 16px; line-height: 1.4; letter-spacing: -0.09px;
+    color: var(--midnight-navy);
+  }
+
+  /* Map help "?" — floating inside the map card */
+  .map-help{
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 10;
+  }
+  .map-help summary{
+    list-style: none;
+    cursor: pointer;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--pure);
+    color: var(--storm);
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 16px; font-weight: 500;
+    display: flex; align-items: center; justify-content: center;
+    user-select: none;
+    transition: all .15s ease;
+    box-shadow: rgba(0,39,80,0.04) 0 0 0 1px, rgba(0,39,80,0.10) 0 2px 6px -2px;
+  }
+  .map-help summary::-webkit-details-marker{ display: none; }
+  .map-help summary:hover,
+  .map-help[open] summary{
+    background: var(--midnight-navy);
+    color: var(--chartreuse);
+    box-shadow: rgba(0,39,80,0.20) 0 4px 10px -2px;
+  }
+  .map-help-popover{
+    position: absolute;
+    top: 38px; right: 0;
+    width: 320px;
+    background: var(--pure);
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow-md), rgba(0,39,80,0.06) 0 12px 24px -8px;
+  }
+  .map-help-popover .map-help-title{
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--storm);
+    font-weight: 500;
+    margin: 0 0 10px;
+  }
+  .map-help-popover p{
+    margin: 0 0 10px;
+    font-size: 14px; line-height: 1.5;
+    color: var(--midnight-navy);
+  }
+  .map-help-popover p:last-child{ margin-bottom: 0; }
+  .map-help-popover strong{ font-weight: 600; }
+
+  /* Phase 9: family-color legend below the SVG */
+  .map-legend{
+    display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+    font-size: 12px; font-family: var(--mono); color: var(--storm);
+    margin: 8px 0 0; padding: 8px 28px 0; letter-spacing: 0.04em;
+  }
+  .map-legend .legend-dot{
+    display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+    margin-right: 6px; vertical-align: middle;
+  }
+  .map-legend .legend-tenth{ background: var(--chartreuse); border: 1px solid var(--midnight-navy); }
+  [data-theme="dark"] .map-legend{ color: var(--on-dark-78); }
+  [data-theme="dark"] .map-legend .legend-tenth{ border-color: var(--on-dark); }
+
+  /* Phase 9: model-family chip on frame cards. Lives on its own line under
+     the frame name so all 9 cards render with the same vertical rhythm
+     regardless of whether a closest/farthest flag is present. */
+  .f-name{ display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+  .f-name-text{ display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .frame-model-chip{
+    display: inline-block; padding: 2px 8px;
+    font-size: 11px; font-family: var(--mono); letter-spacing: 0.04em;
+    border-radius: 999px;
+  }
+  .frame-model-anthropic{ background: rgba(27,37,64,0.08); color: var(--midnight-navy); }
+  .frame-model-openai{    background: rgba(27,140,90,0.10); color: #1b8c5a; }
+  [data-theme="dark"] .frame-model-anthropic{ background: var(--surface-glass-08); color: var(--on-dark-92); }
+  [data-theme="dark"] .frame-model-openai{    background: rgba(27,140,90,0.18); color: #4dd49a; }
+
+  /* Reading guide — fixed floating bottom-right */
+  .guide{
+    position: fixed;
+    right: 24px; bottom: 24px;
+    z-index: 50;
+    font-family: var(--sans);
+    display: flex; flex-direction: column;
+    align-items: flex-end;
+  }
+  .guide-toggle{
+    appearance: none; -webkit-appearance: none;
+    border: 0;
+    background: var(--midnight-navy);
+    color: var(--chartreuse);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 12px 18px;
+    border-radius: 9999px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 10px;
+    box-shadow:
+      rgba(24,37,66,0.32) 0 1px 3px 0,
+      rgba(24,37,66,0.44) 0 12px 24px -12px,
+      rgba(219,247,255,0.48) 0 0.5px 0.5px 0 inset;
+    transition: transform .15s ease, box-shadow .15s ease;
+    outline: none;
+  }
+  .guide-toggle:hover{
+    transform: translateY(-1px);
+    box-shadow:
+      rgba(24,37,66,0.40) 0 1px 3px 0,
+      rgba(24,37,66,0.55) 0 16px 28px -12px,
+      rgba(219,247,255,0.48) 0 0.5px 0.5px 0 inset;
+  }
+  .guide-toggle:focus-visible{
+    box-shadow: 0 0 0 3px rgba(208,241,0,0.45), rgba(24,37,66,0.44) 0 12px 24px -12px;
+  }
+  .guide-toggle .marker{
+    width: 7px; height: 7px; border-radius: 9999px;
+    background: var(--chartreuse);
+    box-shadow: 0 0 0 3px rgba(208,241,0,0.25);
+  }
+  .guide-panel{
+    display: none;
+    width: min(380px, calc(100vw - 48px));
+    max-height: min(72vh, 640px);
+    background: var(--pure);
+    border-radius: 16px;
+    box-shadow: var(--shadow-xl);
+    margin-bottom: 12px;
+    overflow: hidden;
+    flex-direction: column;
+  }
+  .guide.open .guide-panel{ display: flex; }
+  .guide-panel-body{
+    overflow-y: auto;
+    padding: 24px 24px 4px;
+    scrollbar-width: thin;
+  }
+  .guide-panel-foot{
+    flex-shrink: 0;
+    padding: 14px 24px 18px;
+    border-top: 1px solid var(--border-rule);
+    background: var(--ghost-canvas);
+  }
+  .guide-panel .kicker{
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--storm);
+    margin: 0 0 8px;
+  }
+  .guide-panel h3{
+    margin: 0 0 4px;
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 22px;
+    letter-spacing: -0.22px;
+    line-height: 1.15;
+    color: var(--midnight-navy);
+  }
+  .guide-panel h3 em{ font-style: italic; color: var(--midnight-navy); }
+  .guide-panel ol{
+    margin: 18px 0 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: g;
+  }
+  .guide-panel ol li{
+    counter-increment: g;
+    position: relative;
+    padding: 12px 0 12px 30px;
+    border-top: 1px solid var(--border-subtle);
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--storm);
+  }
+  .guide-panel ol li:first-child{ border-top: none; }
+  .guide-panel ol li::before{
+    content: counter(g, decimal-leading-zero);
+    position: absolute;
+    left: 0; top: 12px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--storm);
+    letter-spacing: 0.06em;
+  }
+  .guide-panel ol li b{ color: var(--midnight-navy); font-weight: 600; }
+  .guide-panel .foot{
+    margin: 0 0 12px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--storm);
+  }
+  .guide-close{
+    appearance: none; -webkit-appearance: none;
+    background: none; border: 0; cursor: pointer;
+    color: var(--storm);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0;
+    outline: none;
+  }
+  .guide-close:hover{ color: var(--midnight-navy); }
+
+  /* Colophon */
+  footer.colophon{
+    max-width: 1200px;
+    margin: 80px auto 0;
+    padding: 32px;
+    border-top: 1px solid var(--border-rule);
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 24px;
+    font-family: var(--mono); font-size: 12px;
+    color: var(--storm);
+  }
+  footer.colophon b{ color: var(--midnight-navy); font-weight: 500; }
+  footer.colophon .center{ text-align: center; font-style: italic; font-family: var(--serif); }
+  footer.colophon .right{ text-align: right; }
+
+  /* === Dark mode ===
+     Activated by JS setting [data-theme="dark"] on <html>. The inline script
+     in <head> resolves the effective theme (stored preference > system) before
+     first paint to avoid FOUC. Fallback when JS is disabled: page renders in
+     light always (acceptable trade-off for static reports). */
+  :root[data-theme="dark"] {
+    --ghost-canvas:  #0b1124;
+    --pure:          #14192a;
+    --ice-veil:      #0d1734;
+    --amber-veil:    #1f160b;
+    --amber:         #ff9a4d;
+    --amber-soft:    rgba(255,154,77,0.16);
+    --amber-rule:    rgba(255,154,77,0.36);
+    --midnight-navy: #e6eefb;     /* primary text only */
+    --ash:           #6b7184;
+    --storm:         #b1b5c0;
+    --fog:           #4a5168;
+
+    --on-dark-border-strong: rgba(255,255,255,0.14);
+    --surface-glass-soft:    rgba(20,25,42,0.55);
+
+    --border-faint:  rgba(255,255,255,0.04);
+    --border-subtle: rgba(255,255,255,0.06);
+    --border-rule:   rgba(255,255,255,0.10);
+    --border-strong: rgba(255,255,255,0.14);
+
+    --navy-08:     rgba(255,255,255,0.10);
+    --ring-subtle: rgba(255,255,255,0.06) 0 0 0 1px;
+    --ring-rule:   rgba(255,255,255,0.08) 0 0 0 1px;
+
+    --shadow-xl:     rgba(0,0,0,0.45) 0 56px 72px -16px, rgba(0,0,0,0.40) 0 32px 32px -16px, rgba(0,0,0,0.35) 0 6px 12px -3px, rgba(255,255,255,0.05) 0 0 0 1px;
+    --shadow-md:     rgba(0,0,0,0.35) 0 6px 16px -3px, rgba(255,255,255,0.05) 0 0 0 1px;
+    --shadow-subtle: rgba(255,255,255,0.04) 0 1px 1px 0 inset, rgba(0,0,0,0.30) 0 8px 16px 0, rgba(0,0,0,0.25) 0 4px 12px 0, rgba(0,0,0,0.20) 0 1px 2px 0, rgba(255,255,255,0.05) 0 0 0 1px;
+  }
+
+  /* Components that use --midnight-navy AS A BACKGROUND need a fixed
+     dark navy in dark mode — the flipped token would invert them. */
+  [data-theme="dark"] .logo .mk         { background: #1b2540; color: var(--chartreuse); }
+  [data-theme="dark"] .sec-eyebrow .n   { background: #1b2540; color: var(--on-dark); }
+  [data-theme="dark"] .consensus-tag    { background: #1b2540; color: var(--on-dark); }
+  [data-theme="dark"] .tenth-tag        { background: #1b2540; color: var(--amber); }
+  [data-theme="dark"] .guide-toggle     { background: #1b2540; color: var(--chartreuse);
+                                           box-shadow: rgba(0,0,0,0.55) 0 1px 3px 0,
+                                                       rgba(0,0,0,0.65) 0 12px 24px -12px,
+                                                       rgba(255,255,255,0.06) 0 0.5px 0.5px 0 inset; }
+  [data-theme="dark"] .guide-toggle:hover{ background: #243054;
+                                            box-shadow: rgba(0,0,0,0.65) 0 1px 3px 0,
+                                                        rgba(0,0,0,0.75) 0 16px 28px -12px,
+                                                        rgba(255,255,255,0.08) 0 0.5px 0.5px 0 inset; }
+  /* Closest chip — chartreuse bg, force dark text */
+  [data-theme="dark"] .f-name .f-mark           { color: #1b2540; background: var(--chartreuse); }
+  [data-theme="dark"] .f-name .f-mark.farthest  { background: transparent; color: var(--storm);
+                                                   box-shadow: 0 0 0 1px rgba(255,255,255,0.20); }
+
+  /* Past-reports button: solid white in light → translucent in dark */
+  [data-theme="dark"] .mast-index-btn       { background: rgba(255,255,255,0.04);
+                                               border: 1px solid rgba(255,255,255,0.14);
+                                               color: var(--midnight-navy); }
+  [data-theme="dark"] .mast-index-btn:hover { background: var(--chartreuse);
+                                               border-color: var(--chartreuse);
+                                               color: #1b2540; }
+
+  /* Hard-coded borders that aren't on tokens yet */
+  [data-theme="dark"] .masthead         { border-bottom-color: rgba(255,255,255,0.10); }
+  [data-theme="dark"] footer.colophon   { border-top-color: rgba(255,255,255,0.10); }
+
+  /* Map card surfaces */
+  [data-theme="dark"] .map-svg          { background: var(--pure); }
+  [data-theme="dark"] .map-help summary { background: var(--pure); color: var(--storm); }
+  [data-theme="dark"] .map-help summary:hover,
+  [data-theme="dark"] .map-help[open] summary { background: #1b2540; color: var(--chartreuse); }
+  [data-theme="dark"] .map-help-popover           { background: var(--pure); }
+  [data-theme="dark"] .map-help-popover p         { color: var(--midnight-navy); }
+  [data-theme="dark"] .map-help-popover .map-help-title { color: var(--storm); }
+
+  /* SVG ink overrides — split by element + attribute so fill="none"
+     circles don't accidentally fill in. Order: more specific first. */
+  [data-theme="dark"] .map-svg svg circle[fill="#1b2540"]            { fill: var(--midnight-navy); }
+  [data-theme="dark"] .map-svg svg circle[fill="none"][stroke="#1b2540"] { stroke: rgba(255,255,255,0.28); }
+  [data-theme="dark"] .map-svg svg rect[fill="#1b2540"]              { fill: #1b2540; }
+  [data-theme="dark"] .map-svg svg rect[fill="none"][stroke="#1b2540"]   { stroke: rgba(255,255,255,0.36); }
+  [data-theme="dark"] .map-svg svg g[fill="#1b2540"]                 { fill: var(--midnight-navy); }
+  [data-theme="dark"] .map-svg svg g[fill="#7c8293"]                 { fill: var(--storm); }
+  [data-theme="dark"] .map-svg svg text[fill="#1b2540"]              { fill: var(--midnight-navy); }
+  [data-theme="dark"] .map-svg svg text[fill="#d0f100"]              { fill: var(--chartreuse); }
+  [data-theme="dark"] .map-svg svg text[fill="#6b7184"]              { fill: var(--storm); }
+  [data-theme="dark"] .map-svg svg text[fill="#7c8293"]              { fill: var(--storm); }
+  [data-theme="dark"] .map-svg svg g[stroke="rgba(0,39,80,0.06)"]    { stroke: rgba(255,255,255,0.06); }
+  [data-theme="dark"] .map-svg svg g[stroke="rgba(0,39,80,0.10)"]    { stroke: rgba(255,255,255,0.10); }
+  [data-theme="dark"] .map-svg svg g[stroke="rgba(27,37,64,0.20)"]   { stroke: rgba(255,255,255,0.16); }
+
+  /* Subtle pill/header backgrounds layered on dark surface */
+  [data-theme="dark"] .map-top .pill                    { background: rgba(255,255,255,0.04); }
+  [data-theme="dark"] .frames-head                      { background: rgba(255,255,255,0.02); }
+  [data-theme="dark"] .tenth-foot                       { background: rgba(255,255,255,0.02); }
+  [data-theme="dark"] .mode                             { background: rgba(255,255,255,0.03); }
+  [data-theme="dark"] .tenth-body .pull,
+  [data-theme="dark"] .consensus-body .pull,
+  [data-theme="dark"] .f-body .pull                     { background: rgba(255,255,255,0.04); }
+  [data-theme="dark"] .frame:hover                      { background: rgba(255,255,255,0.02); }
+  [data-theme="dark"] .frame.open                       { background: rgba(255,255,255,0.03); }
+  [data-theme="dark"] .guide-panel-foot                 { background: rgba(255,255,255,0.03); }
+
+  /* Painting on hero — slight dim for visual continuity */
+  [data-theme="dark"] .hero-bg                          { filter: brightness(0.75); }
+
+  /* === Theme toggle button === */
+  .theme-toggle{
+    appearance: none; -webkit-appearance: none;
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    color: var(--midnight-navy);
+    width: 32px; height: 32px;
+    border-radius: 999px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+    flex-shrink: 0;
+  }
+  .theme-toggle:hover{ background: var(--border-subtle); }
+  .theme-toggle:focus-visible{ outline: 2px solid var(--chartreuse); outline-offset: 2px; }
+  .theme-toggle svg{ width: 16px; height: 16px; display: block; }
+  .theme-toggle .icon-moon{ display: none; }
+  .theme-toggle .icon-sun{ display: block; }
+  [data-theme="dark"] .theme-toggle{
+    border-color: rgba(255,255,255,0.18);
+    color: var(--chartreuse);
+  }
+  [data-theme="dark"] .theme-toggle:hover{ background: rgba(255,255,255,0.06); }
+  [data-theme="dark"] .theme-toggle .icon-sun{ display: none; }
+  [data-theme="dark"] .theme-toggle .icon-moon{ display: block; }
+
+  @media (max-width: 920px){
+    .hero-inner{ grid-template-columns: 1fr; padding: 40px 24px 24px; }
+    .hero-quote.consensus{ display: none; }
+    .hero-q{ font-size: 15px; }
+    .map-foot{ grid-template-columns: 1fr 1fr; }
+    .map-foot .cell{ border-bottom: 1px solid var(--border-subtle); }
+    .modes{ grid-template-columns: 1fr; }
+    .frames-head{ display: none; }
+    .frame-row{ grid-template-columns: 40px 1fr 80px 16px; row-gap: 4px; }
+    .frame-row .f-bar{ display: none; }
+    .frame-row .f-lean{ grid-column: 2; grid-row: 2; font-size: 14px; max-width: none; }
+    .f-body{ padding: 4px 24px 22px 24px; }
+    .tenth-top{ grid-template-columns: 1fr; }
+    .tenth-d-stat{ text-align: left; }
+    .consensus-top{ grid-template-columns: 1fr; }
+    .consensus-d{ text-align: left; }
+    .consensus-body{ column-count: 1; }
+  }
+
+  /* Takeaway markers — conclusion (qué creer) + action (qué hacer) */
+  mark.tk-c, mark.tk-a {
+    background: transparent;
+    color: inherit;
+    padding: 0 2px;
+    border-radius: 2px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    transition: background 0.15s ease;
+  }
+  mark.tk-c {
+    background: linear-gradient(180deg, transparent 55%, rgba(190, 230, 90, 0.55) 55%);
+  }
+  mark.tk-a {
+    background: linear-gradient(180deg, transparent 55%, rgba(120, 200, 230, 0.45) 55%);
+    font-weight: 500;
+  }
+  body.tk-off mark.tk-c, body.tk-off mark.tk-a { background: transparent; font-weight: inherit; }
+
+  .tk-toggle {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 9999;
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(20, 20, 24, 0.85);
+    color: #f5f5f0;
+    font: 500 12px/1.2 system-ui, -apple-system, sans-serif;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    user-select: none;
+  }
+  .tk-toggle:hover { background: rgba(40, 40, 48, 0.95); }
+  .tk-toggle .dot-c { width: 10px; height: 10px; border-radius: 2px; background: rgba(190, 230, 90, 0.7); display: inline-block; }
+  .tk-toggle .dot-a { width: 10px; height: 10px; border-radius: 2px; background: rgba(120, 200, 230, 0.6); display: inline-block; }
+  .tk-legend { font-size: 10px; opacity: 0.75; }
+</style>
+</head>
+<body>
+<button class="tk-toggle" onclick="document.body.classList.toggle('tk-off')" title="Alternar marcadores">
+  <span class="dot-c"></span><span class="tk-legend">conclusión</span>
+  <span class="dot-a"></span><span class="tk-legend">acción</span>
+</button>
+<main data-screen-label="Reporte Henge">
+
+  <header class="masthead">
+    <div class="logo"><span class="mk">10</span> Henge</div>
+    <div class="mast-meta">
+      <b>Reporte #1352</b><span class="sep">·</span>2026·05·03 13:52 CLT<span class="sep">·</span>v0.6
+    </div>
+    <div class="mast-actions">
+      <a class="mast-index-btn" href="../index.html" aria-label="Ver reportes anteriores">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 3.5h12M2 8h12M2 12.5h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span>Reportes anteriores</span>
+      </a>
+      <button type="button" class="theme-toggle" aria-label="Cambiar tema" title="Cambiar tema">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-bg" aria-hidden="true"></div>
+    <div class="hero-inner">
+      <div>
+        <div class="hero-verdict">
+          <span>consenso</span><span class="sep">&middot;</span><b>Alineado</b><span class="sep">&middot;</span><span>&sigma; 0.022</span>
+        </div>
+        <h1 class="hero-h">Nueve consejeros alineados.<br><em>El décimo debe disentir.</em></h1>
+        <p class="hero-dek">Tu pregunta corre por nueve marcos cognitivos. Medimos el consenso y obligamos a un décimo a discrepar con rigor.</p>
+      </div>
+
+      <div class="hero-quotes">
+        <a class="hero-quote consensus" href="#consensus">
+          <div class="mark"><span class="d"></span>&#x03A3; &middot; Los Nueve</div>
+          <blockquote class="hero-q">Adopción activa primero — formación y copilotos desbloquean el resto</blockquote>
+          <div class="cite">consenso &middot; &sigma; 0.022</div>
+        </a>
+        <a class="hero-quote tenth" href="#tenth">
+          <div class="mark"><span class="ord">10</span> &middot; El D&eacute;cimo</div>
+          <blockquote class="hero-q">### Adopción no-medible sin baseline El propio enunciado confirma ausencia de baseline de costos manuales&hellip;</blockquote>
+          <div class="cite">disenso obligado &middot; d 0.135</div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <div class="page">
+
+  <section class="section">
+    <div class="sec-head sec-head-question">
+      <div class="l">
+        <div class="sec-eyebrow"><span class="n">01</span>Reporte · #1352</div>
+        <h2>La pregunta <em>que los nueve respondieron</em></h2>
+      </div>
+      <div class="r">
+        <blockquote class="question-pull">Con presupuesto de 20M para 24 meses y siendo la adopción organizacional el principal cuello de botella, ¿cuáles 3-4 ofertas de servicios de IA priorizar en los próximos 6-9 meses entre estas opciones: (A) formación + gestión del cambio, (B) gobierno/seguridad/cumplimiento de IA, (C) integración de GenAI/copilotos para conocimiento, (D) analítica predictiva/optimización para operaciones, (E) automatización de procesos con agentes, (F) MLOps/plataforma de datos?</blockquote>
+      </div>
+    </div>
+
+    <section class="meta-card">  <h3>Auditoría de la pregunta</h3>  <div class="meta-body">    <div class="meta-grid">      <div class="meta-cell meta-cell-">  <div class="meta-cell-axis">Reversibilidad</div>  <div class="meta-cell-value">Reversible con costo</div>  <div class="meta-cell-hint">Se deshace, pero toma meses y capital significativo.</div></div>      <div class="meta-cell meta-cell-">  <div class="meta-cell-axis">Urgencia</div>  <div class="meta-cell-value">Semanas</div>  <div class="meta-cell-hint">Cambio de estado relevante en semanas.</div></div>      <div class="meta-cell meta-cell-">  <div class="meta-cell-axis">Calidad de pregunta</div>  <div class="meta-cell-value">Bien formada</div>  <div class="meta-cell-hint">Decisión binaria/N-ária con stakes y criterios claros.</div></div>      <div class="meta-cell meta-cell-ok">  <div class="meta-cell-axis">Recomendación</div>  <div class="meta-cell-value">Procede</div>  <div class="meta-cell-hint">Los 9 advisors corren tal como está.</div></div>    </div>    <div class="meta-reasoning"><p>Es una decisión de portafolio estratégico (elegir 3-4 ofertas y segmento objetivo) que puede revertirse, pero con costo: implica contratación, desarrollo de capacidades, ventas y posicionamiento que no se deshacen en &lt;30 días ni a &lt;10% del costo. No es un one-way-door definitivo, pero sí tiene inercia operativa y comercial, por lo que encaja como reversible con costo.<br>La urgencia es de semanas: la ventaja competitiva en LATAM y el miedo a quedar atrás sugieren que demorar reduce oportunidades comerciales, pero no hay consecuencias materiales en días. La ventana de planificación pedida (6–9 meses) y el horizonte de presupuesto (24 meses) apuntan a una cadencia de decisión en semanas.<br>La pregunta está bien formada: delimita opciones concretas (A–F), pide priorización y orden, acota horizonte temporal y ofrece criterios contextuales (cuello de botella de adopción, métricas sugeridas, driver de paridad competitiva). Aunque faltan algunos datos (madurez tecnológica del cliente, mapeo competitivo), no impiden que los 9 asesores propongan una priorización accionable ahora. Por ello, se recomienda proceder sin reformulación.</p></div>  </div></section>
+
+    <section class="map-card">
+      <div class="map-top">
+        <div class="l">
+          <span class="pill"><span class="d"></span>fig.01 · mapa de desacuerdo</span>
+          <span class="meta">10 voces · MDS · cosine</span>
+        </div>
+        <div class="legend-row">
+          <span><i class="ld t"></i>Décimo hombre</span>
+          <span><i class="ld n"></i>Marcos del consenso</span>
+        </div>
+      </div>
+
+      <div class="map-svg">
+        <details class="map-help">
+          <summary aria-label="Cómo leer este mapa">?</summary>
+          <div class="map-help-popover">
+            <p class="map-help-title">Cómo leer este mapa</p>
+            <p>Cada punto es un consejero.</p>
+            <p>El <strong>centroide</strong> al centro es la zona de consenso — donde el grupo converge.</p>
+            <p><strong>Más cerca</strong> del centro = más alineado con el resto.<br><strong>Más lejos</strong> = piensa distinto.</p>
+            <p>El <strong style="color: var(--midnight-navy); background: var(--chartreuse); padding: 0 4px; border-radius: 3px;">10 · décimo hombre</strong> es el disidente obligado.</p>
+            <p>Los anillos concéntricos marcan distancias iguales al centroide.</p>
+          </div>
+        </details>
+        <svg viewBox="0 0 1200 638" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+<g stroke="rgba(0,39,80,0.06)" stroke-width="0.5">
+<line x1="600" y1="40" x2="600" y2="598"/>
+<line x1="80" y1="319" x2="1120" y2="319"/>
+</g>
+<g stroke="rgba(0,39,80,0.10)" stroke-width="0.7" fill="none">
+<circle cx="600" cy="319" r="60"/>
+<circle cx="600" cy="319" r="120" stroke-dasharray="3 5"/>
+<circle cx="600" cy="319" r="200" stroke-dasharray="3 5"/>
+</g>
+<g>
+<rect x="592" y="311" width="16" height="16" fill="none" stroke="#1b2540" stroke-width="1" transform="rotate(45 600 319)"/>
+<text x="618" y="316" font-family="JetBrains Mono, monospace" font-size="11" fill="#6b7184" letter-spacing="1">CENTROIDE</text>
+</g>
+<g stroke="rgba(27,37,64,0.20)" stroke-width="0.7">
+<line x1="600" y1="319" x2="678.5" y2="229.1"/>
+<line x1="600" y1="319" x2="662.6" y2="337.4"/>
+<line x1="600" y1="319" x2="483.4" y2="363.3"/>
+<line x1="600" y1="319" x2="547.7" y2="460.1"/>
+<line x1="600" y1="319" x2="567.5" y2="329.7"/>
+<line x1="600" y1="319" x2="675.2" y2="518.7"/>
+<line x1="600" y1="319" x2="559.6" y2="246.4"/>
+<line x1="600" y1="319" x2="625.1" y2="119.0"/>
+<line x1="600" y1="319" x2="414.7" y2="211.8"/>
+</g>
+<line x1="600" y1="319" x2="785.9" y2="374.4" stroke="#d0f100" stroke-width="1.5" stroke-dasharray="4 4"/>
+<rect x="662.9" y="335.7" width="60" height="22" rx="11" fill="#1b2540"/>
+<text x="692.9" y="350.7" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" font-weight="500" fill="#d0f100">d 0.135</text>
+<g font-family="Source Sans 3, Source Sans Pro, sans-serif" font-size="13" fill="#1b2540">
+<g>
+<circle cx="678.5" cy="229.1" r="6" fill="#1b8c5a"/>
+<text x="693.5" y="226.1" font-weight="500" text-anchor="start">01 empirical</text>
+<text x="693.5" y="241.1" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#6b7184" text-anchor="start">d 0.076</text>
+</g>
+<g>
+<circle cx="662.6" cy="337.4" r="6" fill="var(--midnight-navy)"/>
+<text x="677.6" y="334.4" font-weight="500" text-anchor="start">02 historical</text>
+<text x="677.6" y="349.4" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#6b7184" text-anchor="start">d 0.071</text>
+</g>
+<g>
+<circle cx="483.4" cy="363.3" r="6" fill="#1b8c5a"/>
+<text x="468.4" y="360.3" font-weight="500" text-anchor="end">03 first-principles</text>
+<text x="468.4" y="375.3" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#6b7184" text-anchor="end">d 0.075</text>
+</g>
+<g>
+<circle cx="547.7" cy="460.1" r="6" fill="var(--midnight-navy)"/>
+<text x="532.7" y="457.1" font-weight="500" text-anchor="end">04 analogical</text>
+<text x="532.7" y="472.1" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#6b7184" text-anchor="end">d 0.087</text>
+</g>
+<g>
+<circle cx="567.5" cy="329.7" r="7" fill="#1b8c5a"/>
+<circle cx="567.5" cy="329.7" r="14" fill="none" stroke="#1b2540" stroke-width="1" stroke-dasharray="2 2"/>
+<text x="552.5" y="326.7" font-weight="500" text-anchor="end">05 systemic</text>
+<text x="552.5" y="341.7" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#6b7184" text-anchor="end">d 0.061 · más cercano</text>
+</g>
+<g>
+<circle cx="675.2" cy="518.7" r="6" fill="var(--midnight-navy)"/>
+<text x="690.2" y="515.7" font-weight="500" text-anchor="start">06 ethical</text>
+<text x="690.2" y="530.7" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#6b7184" text-anchor="start">d 0.124 · más lejano</text>
+</g>
+<g>
+<circle cx="559.6" cy="246.4" r="6" fill="#1b8c5a"/>
+<text x="544.6" y="243.4" font-weight="500" text-anchor="end">07 soft-contrarian</text>
+<text x="544.6" y="258.4" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#6b7184" text-anchor="end">d 0.066</text>
+</g>
+<g>
+<circle cx="625.1" cy="119.0" r="6" fill="#1b8c5a"/>
+<text x="640.1" y="116.0" font-weight="500" text-anchor="start">08 radical-optimist</text>
+<text x="640.1" y="131.0" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#6b7184" text-anchor="start">d 0.108</text>
+</g>
+<g>
+<circle cx="414.7" cy="211.8" r="6" fill="#1b8c5a"/>
+<text x="399.7" y="208.8" font-weight="500" text-anchor="end">09 pre-mortem</text>
+<text x="399.7" y="223.8" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#6b7184" text-anchor="end">d 0.119</text>
+</g>
+</g>
+<g>
+<circle cx="785.9" cy="374.4" r="48" fill="#d0f100" opacity="0.18"/>
+<circle cx="785.9" cy="374.4" r="28" fill="#d0f100" opacity="0.32"/>
+<circle cx="785.9" cy="374.4" r="12" fill="#d0f100"/>
+<circle cx="785.9" cy="374.4" r="12" fill="none" stroke="#1b2540" stroke-width="1.5"/>
+<text x="785.9" y="322.4" text-anchor="middle" font-family="Source Sans 3, Source Sans Pro, sans-serif" font-weight="500" font-size="13" fill="#1b2540" letter-spacing="2">10 · TENTH-MAN</text>
+<text x="785.9" y="338.4" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#1b2540">disenso steel-man</text>
+</g>
+<g font-family="JetBrains Mono, monospace" font-size="10" fill="#7c8293" letter-spacing="1">
+<text x="80" y="615">MDS-1 →</text>
+<text x="600" y="34" text-anchor="middle">↑ MDS-2</text>
+</g>
+</svg>
+        <div class="map-legend">  <span class="legend-dot" style="background: var(--midnight-navy);"></span>Anthropic  <span class="legend-dot" style="background: #1b8c5a;"></span>OpenAI  <span class="legend-dot legend-tenth"></span>Tenth-man (blind)</div>
+      </div>
+
+      <div class="map-foot">
+        <div class="cell">
+          <div class="lbl">Décimo · d</div>
+          <div class="val">0.135<span class="badge">tenth</span></div>
+          <div class="sub">obligado a discrepar</div>
+        </div>
+        <div class="cell">
+          <div class="lbl">Más cercano</div>
+          <div class="val">0.061</div>
+          <div class="sub">systemic</div>
+        </div>
+        <div class="cell">
+          <div class="lbl">Más divergente (de los 9)</div>
+          <div class="val">0.124</div>
+          <div class="sub">ethical</div>
+        </div>
+        <div class="cell">
+          <div class="lbl">Spread interno</div>
+          <div class="val">0.022</div>
+          <div class="sub">σ entre los 9 marcos</div>
+        </div>
+      </div>
+    </section>
+
+    
+    <article class="consensus-card" id="consensus">
+      <header class="consensus-top">
+        <div>
+          <div class="consensus-tag"><span class="d"></span>El consenso de los 9 · ALIGNED</div>
+          <p class="consensus-lead">En lo que los nueve coinciden, en una línea:</p>
+          <h3>Adopción activa primero — formación y copilotos desbloquean el resto</h3>
+        </div>
+        <div class="consensus-d">
+          <b>0.124</b>
+          max · vs centroide
+        </div>
+      </header>
+      <div class="consensus-body">
+        <h3>(1) Donde los nueve coinciden</h3>
+<p>Los nueve marcos convergen en que <mark class="tk-c"><strong>la adopción organizacional es la palanca crítica</strong>, no la sofisticación técnica</mark>. Todos reconocen que con presupuesto limitado y cuello de botella confirmado en cambio cultural, las ofertas deben maximizar &quot;usuarios activos sostenidos&quot; y &quot;tiempo a primer valor&quot; antes que capacidad técnica máxima. Hay consenso también en que <mark class="tk-a"><strong>formación + gestión del cambio (A) y copilotos de conocimiento (C) deben ser el núcleo de los primeros 6-9 meses</strong></mark>, porque ambas tienen ciclos cortos (1-8 semanas a valor), bajo acoplamiento a madurez de datos del cliente, y efecto directo en adopción medible. Un tercer punto común: <mark class="tk-a"><strong>gobierno/seguridad/cumplimiento (B) actúa como habilitador en corporativos regulados</strong>, no como oferta de entrada, pero es obligatorio en paralelo para evitar que pilotos exitosos queden bloqueados en escala</mark>. Finalmente, todos <mark class="tk-a">descartan o posponen <strong>MLOps/plataforma (F) y analítica predictiva pesada (D)</strong> en esta ventana</mark> porque requieren madurez de datos desconocida y ciclos más largos que no encajan con el objetivo de mostrar valor en 6-9 meses.</p>
+<h3>(2) Tensión interna</h3>
+<p>La tensión principal es sobre <strong>cuándo y cómo empaquetar A con C</strong>: algunos marcos (empirical, historical, first-principles) sugieren que A debe ser capa obligatoria embebida en cada oferta técnica para proteger adopción, mientras que otros (soft-contrarian, systemic) advierten que vender A como componente separado genera margen bajo y fricción comercial, y que la solución es productizar A+C como un único bundle con SLA de adopción. Hay también desacuerdo menor sobre <strong>segmentación</strong>: empirical y historical priorizan corporativos regulados por presupuesto y ciclos de compra, mientras que soft-contrarian y radical-optimist apuntan a mid-market no regulado por velocidad de decisión y adopción más rápida. Una tercera tensión, menos explícita pero presente: si el cliente presiona por E (agentes) o D (predictiva) porque &quot;eso es lo que vio en demos&quot;, ¿se resiste la venta o se adapta el roadmap? Ethical y pre-mortem sugieren resistir; empirical y historical sugieren condicionar. No hay resolución unificada, pero el peso de la evidencia favorece la resistencia disciplinada.</p>
+<h3>(3) Inclinación neta</h3>
+<p><strong>Inclinación neta:</strong> Priorizar en los próximos 6-9 meses una secuencia clara: (1) <mark class="tk-a"><strong>A + C empaquetados como oferta núcleo</strong> — formación + gestión del cambio integrada en cada despliegue de copilotos de conocimiento, con SLA de adopción activa y tiempo a valor medibles</mark>; (2) <mark class="tk-a"><strong>B como capa obligatoria en paralelo para corporativos y sectores regulados</strong>, con paquetes modulares de gobierno/seguridad que no</mark></p>
+      </div>
+    </article>
+
+
+    
+
+    <article class="tenth-card" id="tenth">
+      <header class="tenth-top">
+        <div>
+          <div class="tenth-tag"><span class="d"></span>Décimo Hombre · disidente obligado · método: steel-man</div>
+          <p class="tenth-lead">El argumento más fuerte del disidente obligado contra los nueve:</p>
+          <h3>Por qué los nueve <em>podrían estar equivocados</em></h3>
+        </div>
+        <div class="tenth-d-stat">
+          <b>0.135</b>
+          distancia · centroide
+        </div>
+      </header>
+
+      <div class="tenth-body">
+        <h3>Hechos que acepto</h3>
+<p>Acepto los datos observables: presupuesto de 20M para 24 meses, driver de paridad competitiva (no diferenciación), cuello de botella confirmado en adopción organizacional y no en tecnología, ausencia de baseline de costos manuales, madurez tech del cliente desconocida, y competencia del propio servicio sin mapear. También acepto las métricas propuestas (adopción activa sostenida, tiempo a valor, margen bruto, retención) como razonables. Anticipo que el consenso de los 9 convergerá en algo cercano a: priorizar <strong>A (formación/cambio) + C (GenAI/copilotos) + E (automatización con agentes)</strong>, con un cuarto opcional en B (gobierno) si hay clientes regulados, apuntando a corporativo medio. La lógica del consenso: si la adopción es el cuello, ataca adopción directamente (A), entrega quick-wins visibles (C), y escala con agentes (E).</p>
+<h3>Donde el consenso falla</h3>
+<p><mark class="tk-c">El consenso comete un error de framing clásico: confunde <strong>el cuello de botella del cliente</strong> con <strong>la oferta que debe vender el proveedor</strong></mark>. Que la adopción sea el problema del cliente no implica que &quot;formación + gestión del cambio&quot; sea el servicio más rentable, defendible o escalable para una consultora LATAM. Es la falacia de la simetría: &quot;el problema es X, vendamos X&quot;. Pero formación pura es un commodity de bajo margen, fácil de internalizar por el cliente, fácil de replicar por competidores no mapeados, y no genera lock-in. Lo mismo con copilotos GenAI: Microsoft, Google y los hyperscalers ya empujan Copilot/Gemini directamente a los clientes finales con sus propios partners de implementación; competir ahí en 6-9 meses, sin diferenciación, con presupuesto modesto, es entrar a una guerra de precios.</p>
+<p>&gt; El consenso optimiza para resolver el problema del cliente; el dissenter debe optimizar para construir un negocio defendible que además resuelva el problema del cliente.</p>
+<p>El segundo error: tratar &quot;paridad competitiva&quot; como un driver suave que tolera ofertas suaves. <mark class="tk-c">Paridad competitiva es en realidad un driver <strong>brutalmente racional sobre costo y riesgo</strong> — el cliente no quiere épica, quiere no perder</mark>. Eso favorece ofertas con ROI auditable y riesgo contenido, no talleres de change management cuyo impacto es difícil de medir sin baseline (que el propio enunciado confirma que falta).</p>
+<h3>La pregunta detrás de la pregunta</h3>
+<p>La pregunta real no es &quot;¿qué ofertas priorizar?&quot; sino &quot;¿qué combinación construye un foso defendible en 24 meses en un mercado donde los hyperscalers comoditizan la capa visible de IA?&quot;. Bajo esa lectura, la priorización óptima invierte el consenso: <mark class="tk-a"><strong>B (gobierno/seguridad/cumplimiento) + F (MLOps/plataforma de datos) + D (analítica predictiva/optimización)</strong>, con A (formación) como envoltura embebida en cada engagement, no como oferta standalone</mark>.</p>
+<p>¿Por qué? Porque B y F son las capas que los hyperscalers <strong>no resuelven</strong> para el cliente — requieren contexto local, regulatorio (LATAM tiene marcos heterogéneos: LGPD Brasil, ley fintech México, datos personales Chile/Colombia), y de integración con sistemas legacy. Son ofertas pegajosas: una vez que instalas la plataforma de datos y el marco de gobierno, te quedas años. D (predictiva/optimización para operaciones) ataca directamente el driver de paridad con ROI medible — reducir merma, optimizar rutas, pricing dinámico — y es donde el cliente sí tiene baselines operativos aunque no tenga baseline de &quot;costos manuales&quot;. El segmento debería ser <mark class="tk-a"><strong>corporativo medio en sectores regulados</strong> (banca media, salud, retail con datos personales, energía), no PYME (no paga consultoría premium) ni gran corporativo (ya tiene Accenture/Deloitte)</mark>.</p>
+<p><mark class="tk-a">La adopción se resuelve <strong>embebiendo</strong> change management dentro de cada proyecto B/D/F (5-10% del scope de cada engagement), no vendiéndolo separado</mark>. Esto convierte A en un multiplicador de margen en lugar de una línea de negocio commodity.</p>
+<p>Las condiciones bajo las cuales este dissenter gana sobre el consenso: (1) si los hyperscalers efectivamente comoditizan copilotos en 12-18 meses — altamente probable; (2) si la regulación de IA en LATAM se endurece siguiendo a EU AI Act — ya está sucediendo; (3) si los competidores no mapeados son boutiques de change management baratas — probable en LATAM; (4) si los clientes regulados pagan premium por compliance — históricamente cierto. Si estas cuatro fallan simultáneamente, el consenso A+C+E es superior. Si tres de cuatro se cumplen, el dissenter domina.</p>
+        <h4><span class="ord">§ 4</span>Modos de fallo del consenso</h4><div class="modes"><div class="mode"><div class="ord">§ 01</div><h5>Comoditización por hyperscalers</h5><p>Apostar a C (copilotos GenAI) en 6-9 meses pone a la consultora en competencia directa con el ecosistema de partners de Microsoft/Google, donde el margen colapsa a tarifas de implementación estándar y la diferenciación desaparece antes del mes 18.</p></div><div class="mode"><div class="ord">§ 02</div><h5>Formación como commodity</h5><p>Vender A como oferta standalone genera ingresos rápidos pero sin lock-in: el cliente internaliza la capacidad, los competidores no mapeados (probablemente boutiques de RRHH/cambio) bajan precios, y la retención cae al terminar el primer ciclo de capacitación.</p></div><div class="mode"><div class="ord">§ 03</div><h5>Adopción no-medible sin baseline</h5><p>El propio enunciado confirma ausencia de baseline de costos manuales; vender ofertas cuyo valor depende de demostrar mejora en adopción (A, parte de E) sin instrumentación previa lleva a renovaciones difíciles porque el cliente no puede justificar internamente el gasto del año 2.</p></div></div>
+      </div>
+
+      <footer class="tenth-foot">
+        <span>Generado bajo restricción · <b>steel-man obligatorio</b></span>
+        <span>embed <b>openai/text-embedding-3-large</b> · ~USD 1.06</span>
+      </footer>
+    </article>
+
+    <article class="informed-card" id="informed">  <header class="informed-top">    <div class="informed-tag">cross-lab</div>    <h3>Disenso refinado (cross-lab)</h3>    <p class="informed-sub">gpt-5 audita el disenso ciego de Opus contra los 9 marcos.</p>  </header>  <div class="informed-body">    <p><mark class="tk-c">El mayor riesgo estratégico en los próximos 6-9 meses no es técnico sino de posicionamiento</mark>: si nos volcamos a “copilotos + capacitación” como líneas separadas, quedamos en la zona de comoditización de los hyperscalers y sus partners, y erosionamos margen. Para evitar la guerra de precios y, a la vez, resolver la adopción, <mark class="tk-a">A debe dejar de venderse como curso suelto y pasar a ser una capa obligatoria dentro de cada bundle con métricas de hábito (usuarios activos por rol, acciones completadas) y baseline firmado de tiempo/ROI</mark>. <mark class="tk-a">C sí entra como vehículo de valor rápido, pero blindado contra la comoditización con tres diferenciadores: gobierno pragmático embebido (B), instrumentación de impacto desde el día 1 y aceleradores verticalizados (plantillas por función/industria)</mark> que mueven del “demo” al hábito operativo.</p>
+<p>En segmentación, <mark class="tk-a">combinemos velocidad y defendibilidad: “land” en mid‑market no regulado con bundles A+B (ligero) + C para casos visibles en 4-8 semanas, y en paralelo ofrezcamos B como puerta de entrada en cuentas reguladas</mark>, sabiendo que sus ciclos son más largos. Para infraestructura, <mark class="tk-a">evitemos F pesado y prioricemos un thin‑MLOps/landing‑zone reutilizable (observabilidad, seguridad básica, pipelines estándar) y alianzas cloud</mark>; suficiente para escalar C/E sin quemar meses de ingeniería. E entra como micro‑automatizaciones con humano‑en‑el‑loop donde C ya probó uso; y D se ofrece selectivamente como upsell cuando existan datos adecuados y dueño de proceso, no como apuesta general del 6‑9.</p>
+<p><mark class="tk-c">El hilo conductor es defensibilidad por gobernanza e impacto medido: cada despliegue debe salir con baseline acordado, telemetría de adopción y guardrails listos para auditoría</mark>. Así se mitiga la presión de paridad (cliente quiere ROI auditable y bajo riesgo) sin caer en ofertas comoditizadas; se protege margen y se crea stickiness (vía B + telemetría + aceleradores), mientras se preserva el “time‑to‑value” que el mercado exige.</p>    <div class="informed-grid">      <div class="informed-col">        <div class="ord">§ 01</div>        <h5>Lo que se sostiene</h5>        <ul class="informed-list holds"><li>El riesgo de comoditización de C (copilotos) por la ofensiva de hyperscalers y sus partners presiona márgenes.</li><li>A (formación/gestión del cambio) como SKU standalone es commodity; es más defendible embebida en cada engagement con métricas.</li><li>B (gobierno/compliance) genera stickiness y barreras de salida reales, especialmente en sectores regulados de LATAM.</li><li>Con paridad competitiva, los compradores priorizan ROI auditable y riesgo acotado; es clave instrumentar baseline y trazabilidad desde el inicio.</li><li>La competencia no mapeada puede erosionar precios en ofertas de capacitación; diferenciarse requiere marcos de gobierno e instrumentación de impacto.</li></ul>      </div>      <div class="informed-col">        <div class="ord">§ 02</div>        <h5>Lo que se revisa</h5>        <ul class="informed-list revised"><li>F no debe priorizarse como plataforma pesada; se ajusta a un ‘thin‑MLOps/landing zone’ reusable (observabilidad, seguridad y pipelines básicos) apoyado en alianzas cloud para acelerar C/E y B sin ciclos largos.</li><li>D no es apuesta general de 6-9 meses; se ofrece selectivamente tras crear hábito con C y donde existan datos suficientes y dueño de proceso, para ROI verificable.</li><li>Segmentación: combinar mid‑market no regulado para rapidez (A+B ligero + C) y usar B como puerta en regulados, reconociendo ciclos de compra más largos en estos últimos.</li><li>A no es solo 5-10% del scope; requiere peso y métricas de adopción claras, pero integrado al bundle y no como línea separada.</li></ul>      </div>      <div class="informed-col">        <div class="ord">§ 03</div>        <h5>Lo que se descarta</h5>        <ul class="informed-list discarded"><li>Invertir la priorización hacia B+F+D como eje principal en los primeros 6-9 meses.</li><li>Minimizar el valor de C en la ventana de 6-9 meses.</li><li>Asumir que la gestión del cambio no aporta margen ni defensibilidad cuando se integra y se mide adecuadamente.</li></ul>      </div>    </div>  </div></article>
+  </section>
+
+  <section class="section">
+    <div class="sec-head">
+      <div class="l">
+        <div class="sec-eyebrow"><span class="n">02</span>Marcos cognitivos · 9 voces</div>
+        <h2>Los nueve, ordenados por <em>distancia al centroide</em></h2>
+        <p class="sub">Cada marco aporta una lente: empírica, sistémica, histórica, analógica. Cuanto más cerca del centroide, más representa el consenso. Cuanto más lejos, más solo razona.</p>
+      </div>
+    </div>
+
+    <section class="frames">
+      <div class="frames-head">
+        <span>Idx</span>
+        <span>Marco</span>
+        <span>Veredicto</span>
+        <span>Distancia</span>
+        <span style="text-align:right;">d</span>
+        <span></span>
+      </div>
+      
+    <article class="frame open" data-frame="systemic">
+      <div class="frame-row">
+        <span class="f-idx">#05</span>
+        <span class="f-name">
+          <span class="f-name-text">systemic <span class="f-mark closest">más cercano</span></span>
+          <span class="frame-model-chip frame-model-openai">openai/gpt-5</span>
+        </span>
+        <span class="f-lean">- Decisión y orden de prioridad (6-9 meses): 1) A Formación + Gestión del cambio&hellip;</span>
+        <span class="f-bar"><i style="width:49%"></i></span>
+        <span class="f-d">d <b>0.061</b></span>
+        <span class="f-caret">›</span>
+      </div>
+      <div class="f-body">
+        <h4>Loops en juego</h4>
+<p>- R1 (adopción → valor visible → sponsorship → más adopción): Lanzar casos de uso de alto contacto con el usuario (copilotos de conocimiento) más formación + gestión del cambio crea campeones internos, genera métricas de uso/ahorro rápidas, habilita más presupuesto ejecutivo y baja fricción para escalar.<br>- R2 (confianza → uso seguro → menos incidentes → más confianza): Gobierno/seguridad/cumplimiento reduce sustos legales/PR; al bajar incidentes, sube la tolerancia al riesgo y la apertura a nuevos casos.<br>- B1 (fatiga de cambio → resistencia → desaceleración): Demasiadas iniciativas o automatizaciones sin rediseño del proceso activan saturación y rechazo, que frenan la adopción y erosionan la narrativa de valor.<br>- B2 (deuda de datos/procesos → fallas → escepticismo): Integrar GenAI/automatización sobre contenidos desactualizados o procesos no estandarizados provoca respuestas pobres/errores, alimenta la desconfianza y reduce la disposición a pagar.</p>
+<h4>Efectos de segundo orden</h4>
+<p>- Si priorizas copilotos de conocimiento (C) sin gobierno (B), aumentan tickets de seguridad/compliance, lo que ralentiza TI y activa shadow IT; al incluir B temprano, conviertes ese riesgo en demanda sostenida (nuevo backlog de políticas, auditorías y guardrails), elevando barreras de salida a tu favor.<br>- Formación + cambio (A) como “producto” transversal crea un mercado de capacidades internas; segundo orden: sube la escasez salarial de facilitadores/SMEs y champions, por lo que estandarizar playbooks y medirse por adopción activa mitiga la compresión de márgenes cuando toda la industria copie.<br>- Automatización con agentes (E) en pequeñas porciones, después de C, desplaza carga operativa de equipos back-office; segundo orden: áreas rediseñan roles/SLAs, lo que libera tiempo para data hygiene que, a su vez, mejora el desempeño de C y habilita D (predictiva) más adelante.<br>- Si todos en la industria empujan MLOps/plataforma (F) o predictiva (D) primero, se atascan por falta de datos y patrocinio; al ir primero por adopción + valor visible (A+C) generas presión competitiva que acorta ciclos de compra y te posiciona como estándar de “cómo se adopta”, atrayendo referidos y talento.</p>
+<h4>Variables lentas</h4>
+<p>- Confianza organizacional y tolerancia al riesgo (patrocinio ejecutivo, sindicatos/comités).<br>- Madurez de gestión del cambio y alfabetización de IA en mandos medios.<br>- Calidad de contenido y taxonomías (conocimiento corporativo), estandarización de procesos.<br>- Reputación del proveedor (casos de éxito medidos por adopción), relaciones con compliance.<br>- Capacidad instalada del cliente en TI/seguridad y disponibilidad de integraciones core.</p>
+<h4>Conclusión sistémica</h4>
+<p>- <mark class="tk-a">Decisión y orden de prioridad (6-9 meses): 1) A Formación + Gestión del cambio, 2) C Integración de GenAI/copilotos para conocimiento, 3) B Gobierno/seguridad/cumplimiento de IA, 4) E Automatización de procesos con agentes (en microcasos). Dejar D Predictiva/optimización y F MLOps/plataforma para meses 9-24</mark> cuando ya existan confianza, datos limpios y patrocinio derivados de los primeros wins.<br><mark class="tk-a">- Segmento objetivo: corporativo y upper mid-market no fuertemente regulado para C+E (alto porcentaje de trabajadores del conocimiento, urgencia por paridad competitiva); sector regulado como oferta paralela centrada en B+A primero, con pilotos de C en dominios de bajo riesgo. PYMEs solo vía paquetes estandarizados de A+C de rápida implementación si no canibalizan foco.</mark><br>- <mark class="tk-a">Asignación indicativa del presupuesto de lanzamiento: A 35-40% (playbooks, academias, change pods con métricas de adopción activa), C 30-35% (aceleradores, conectores a suites O365/Google/Slack y curación de contenido), B 15-20% (framework de políticas, evaluación de riesgos, guardrails técnicos, auditorías), E 10-15% (catálogo de micro-automatizaciones en procesos repetitivos post-copiloto)</mark>. Éxito medido por: adopción activa sostenida, semanas a primer caso productivo, margen bruto por paquete, retención/logro de expansión.<br>- Quién gana y quién pierde al escalar: ganan clientes con liderazgo dispuesto a patrocinar cambio y bases de conocimiento aprovechables; gana tu firma al diferenciarse por outcomes de adopción y gobernanza pragmática. Pierden ofertas pesadas de plataforma sin casos visibles en 90 días; seguridad/IT se satura si B no entra a tiempo. A escala sectorial, la “comoditización” de C y A presiona precios; se defiende con IP en aceleradores, benchmarks de adopción y contratos basados en impacto. La secuencia A→C→B→E activa R1 y R2 mientras amortigua B1 y B2, moviendo el equilibrio del sistema desde “experimentos dispersos” a “uso cotidiano gobernado”, y abre camino, en 9-24 meses, para monetizar D y F con menor riesgo y mayor margen.</p>
+      </div>
+    </article>
+    
+
+    <article class="frame" data-frame="soft-contrarian">
+      <div class="frame-row">
+        <span class="f-idx">#07</span>
+        <span class="f-name">
+          <span class="f-name-text">soft-contrarian</span>
+          <span class="frame-model-chip frame-model-openai">openai/gpt-5</span>
+        </span>
+        <span class="f-lean">Con 20M/24 meses, usa los primeros 6–9 para: - 40% en equipos de entrega “two‑in‑a‑box”&hellip;</span>
+        <span class="f-bar"><i style="width:53%"></i></span>
+        <span class="f-d">d <b>0.066</b></span>
+        <span class="f-caret">›</span>
+      </div>
+      <div class="f-body">
+        <h4>Supuesto no examinado</h4>
+<p>Que “adopción organizacional es el cuello de botella” implica priorizar ofertas de capacitación y gestión del cambio como líneas separadas, y que la elección entre A–F es principalmente una decisión de portafolio técnico, no de diseño de paquete de valor y segmentación.</p>
+<h4>Reframe quirúrgico</h4>
+<p>Sí, pero considera que “adopción” no es una oferta separada sino el producto: si y solo si cada entrega técnica viene envuelta en un paquete estandarizado de cambio + guardrails + quick wins, la adopción deja de ser cuello. Cambiando esa premisa, la priorización deja de ser “qué tecnología primero” y pasa a ser “qué bundles con menor fricción de datos y mayor presión competitiva activan uso sostenido en 6–9 meses”.</p>
+<h4>Qué hace visible el reframe</h4>
+<p>- Que A y B no compiten con C–F: A+B deben ser capa obligatoria (“Adoption &amp; Guardrails”) en cada engagement, no un SKU optativo. Así alineas incentivos y métricas de adopción sin vender “entrenamientos sueltos” de bajo impacto.<br>- Que las ofertas técnicas con menor dependencia de data madura y mayor cercanía al flujo diario (copilotos de conocimiento y automatización con humano‑en‑el‑loop) maximizan tiempo a valor y % de usuarios activos, justo las métricas objetivo.<br>- Que el segmento prioritario no es “el más grande” ni “el más regulado”, sino donde la paridad competitiva aprieta y el riesgo de compliance es manejable: mid‑market corporativo y BPO/Shared Services con muchos trabajadores de conocimiento (ventas, CX/call centers, finanzas, RR.HH.), en sectores no fuertemente regulados (retail, e‑commerce, telco comercial, manufactura liviana, servicios profesionales).<br>- Que MLOps/plataforma (F) y analítica predictiva pesada (D) son upsells selectivos donde ya existe data utilizable y un sponsor de proceso; no son motores de adopción temprana en 6–9 meses.</p>
+<h4>Salvedad</h4>
+<p>Este reframe puede subestimar oportunidades de ticket alto en corporativos altamente regulados donde “compliance-first” (B+F) es la única puerta de entrada política. También asume capacidad comercial para vender bundles estandarizados; si tu go‑to‑market depende de soluciones a medida, requerirá disciplina para no diluir el enfoque.</p>
+<p>(1) Premisas reconocidas:<br>- Presupuesto 20M/24 meses; foco en 6–9 meses de impulso inicial.<br>- Driver del cliente final: paridad competitiva, no “moonshots”.<br>- Cuello de botella: adopción interna, no tecnología ni casos de uso.<br>- Éxito: adopción activa, tiempo a valor, margen bruto, retención.<br>- Madurez de datos y baseline de costos de los clientes: inciertos.</p>
+<p>(2) Razonamiento aplicado:<br>- Para mover adopción, la intervención debe vivir donde vive el trabajo: en el correo, buscador interno, CRM/ITSM, suites ofimáticas y sistemas de tickets. Eso favorece C y E porque requieren menos dato histórico y entregan valor percibido en días-semanas.<br>- Reducir fricción y riesgo exige un “sobre” estándar: A (formación+gestión del cambio) centrada en habilidades operativas por rol y rediseño de incentivos; B (gobierno/seguridad/compliance) como plantillas de políticas, controles y configuración segura de proveedores. Al convertir A+B en capa obligatoria del bundle, alineas la venta a métricas de adopción y evitas proyectos “tech‑only” que no se usan.<br>- D (predictiva/optimización) depende de calidad de datos, patrocinios de proceso y ventanas de cambio operacional; útil como escalón 2 en cuentas donde C/E ya ganaron confianza y exhibieron ROI.<br>- F (MLOps/plataforma) sólo crea valor directo en cuentas con ambición de escalar modelos propios; en 6–9 meses, mejor apalancar clouds y toolchains existentes y ofrecer un “thin MLOps” reusable, no construir plataforma.</p>
+<p>(3) Conclusión — Prioridad de 3–4 ofertas y segmentación:<br>- <mark class="tk-a">Paquete 0 (capa obligatoria en todo): A+B como “Adoption &amp; Guardrails as a Service”</mark><br>  - Alcance: academias por rol, champions de área, rediseño de KPIs/incentivos; políticas de uso responsable, evaluación de riesgos, configuración segura de proveedores, data loss prevention básico.<br>  - Métricas: % usuarios activos/semana, NPS del cambio, incidentes 0.<br>- <mark class="tk-a">Oferta 1 (driver principal): C — Integración de GenAI/copilotos para conocimiento</mark><br>  - Casos: búsqueda semántica interna, asistencia de redacción/casos de cliente, resúmenes de tickets, ayuda en CRM/ERP/ITSM, plantillas en suite ofimática.<br>  - Target: mid‑market corporativo y BPO/CX (500–5.000 empleados) en retail, e‑commerce, telco comercial, manufactura liviana, servicios profesionales.<br>  - Promesa: primer caso productivo en 4–6 semanas; adopción sostenida &gt;50% roles objetivo.<br>- <mark class="tk-a">Oferta 2 (co‑driver): E — Automatización de procesos con agentes (humano‑en‑el‑loop)</mark><br>  - Casos: back‑office de finanzas (AP/AR, conciliaciones), RR.HH. (respuestas a empleados), CX (post‑venta, cambios de estado), TI (reset/altas), con aprobaciones humanas.<br>  - Target: mismas cuentas que Oferta 1; también PYMEs con alto volumen transaccional y procesos definidos.<br>  - Promesa: 20–40% de throughput automatizado en 8–10 semanas en 1–2 flujos.<br>- <mark class="tk-a">Oferta 3 (upsell selectivo): D — Analítica predictiva/optimización para operaciones</mark><br>  - Casos: forecasting de demanda, staffing de call center, propensión/churn, pricing táctico.<br>  - Condición de entrada: fuentes de datos mínimas y dueño de proceso con mandato.<br>  - Se oferta en 20–30% de las cuentas donde C/E ya mostraron valor.</p>
+<p><mark class="tk-a">De‑priorizar en 6–9 meses:</mark><br>- F — MLOps/plataforma de datos: ofrecer sólo un “starter kit” interoperable con nubes (pipelines, evaluación, monitoreo básico) y alianzas con hyperscalers. Construcción de plataforma propia, después de tracción.<br>- B como línea independiente sólo si atacas sector altamente regulado (finanzas/health/energía); de lo contrario, mantenerlo como capa obligatoria del bundle.</p>
+<p><mark class="tk-a">Segmento de cliente recomendado:</mark><br>- <mark class="tk-a">Prioridad 1: Mid‑market corporativo y BPO/Shared Services en sectores no críticos en regulación (retail, e‑commerce, telco comercial, manufactura liviana, servicios profesionales)</mark>. Motivo: presión de paridad alta, ciclos de compra ágiles, quick wins visibles, adopción menos bloqueada por compliance.<br><mark class="tk-a">- Prioridad 2: Corporativos grandes en áreas no core‑reguladas (por ejemplo, back‑office de bancos/aseguradoras con B reforzado).</mark><br>- PYMEs: seleccionar las con alto volumen y sistemas estándar; evitar ultra‑fragmentación.</p>
+<p>Cómo medir y operar en 6–9 meses:<br>- Paquetes cerrados de 8–10 semanas con hitos: semana 2 habilitación, semana 4 primer caso en producción, semana 8 &gt;50% de roles objetivo activos. Precios por bundle con SLA de adopción.<br>- Dashboard de 4 métricas: usuarios activos/semana por rol, TTV por caso, margen por bundle, expansión/retención a 90 días.<br>- Reutilización de aceleradores: conectores a suites (O365/Google, Salesforce/ServiceNow, Zendesk), playbooks de cambio, librerías de prompts/políticas.</p>
+<p>Con 20M/24 meses, usa los primeros 6–9 para:<br>- 40% en equipos de entrega “two‑in‑a‑box” (consultor de cambio + ingeniero de integración) para C/E.<br>- 25% en aceleradores repetibles (conectores, plantillas de governance, kits de adopción por rol).<br>- 20% en GTM segmentado (casos de referencia en BPO/CX y funciones back‑office).<br>- 15% en thin‑MLOps y alianzas cloud para no inmovilizar capital en plataforma propia.</p>
+      </div>
+    </article>
+    
+
+    <article class="frame" data-frame="historical">
+      <div class="frame-row">
+        <span class="f-idx">#02</span>
+        <span class="f-name">
+          <span class="f-name-text">historical</span>
+          <span class="frame-model-chip frame-model-anthropic">anthropic/opus-4-7</span>
+        </span>
+        <span class="f-lean">Segmento objetivo: corporativo de sector regulado primero (paciencia organizacional +&hellip;</span>
+        <span class="f-bar"><i style="width:57%"></i></span>
+        <span class="f-d">d <b>0.071</b></span>
+        <span class="f-caret">›</span>
+      </div>
+      <div class="f-body">
+        <h4>Precedentes</h4>
+<p><strong>1. Accenture + IBM en la ola de &quot;Big Data&quot;/Hadoop (circa 2012-2017, mid-range).</strong> Ambas firmas vendieron masivamente plataformas de datos a grandes corporaciones latinoamericanas y globales. Resultado documentado: Gartner estimó que 60-85% de los proyectos Hadoop empresariales no llegaron a producción o fueron abandonados; la causa repetida no fue técnica sino de adopción —los analistas de negocio no cambiaron sus flujos. Diferencia con el caso actual: aquí la oferta F (MLOps/plataforma) es <em>infraestructura</em>, no producto que el usuario final toque. La lección aplica: vender plataforma sin gestión del cambio quema presupuesto.</p>
+<p><strong>2. Microsoft Copilot rollouts corporativos (2023-2024, reciente).</strong> Múltiples casos públicos (incluido el reporte de Gartner de agosto 2024 y datos de la propia Microsoft) muestran que las licencias de Copilot fueron compradas masivamente pero la adopción activa sostenida cayó al 20-40% pasados 3 meses sin programa de enablement. Las cuentas que lograron &gt;60% adopción —ej. casos publicados de Bayer, KPMG— invirtieron 1-2x el costo de licencia en formación + casos de uso curados. Diferencia: la firma consultora aquí <em>vende</em> el acompañamiento, no lo consume; el patrón valida la demanda por A+C empaquetados.</p>
+<p><strong>3. SAP/Oracle ERP en LATAM (1998-2010, long-arc).</strong> Toda una generación de implementaciones documentadas (caso clásico: Hershey 1999 fallido, FoxMeyer 1996 quiebra, vs. casos exitosos de Cemex y Bimbo). El patrón consistente —estudiado por Davenport y otros— es que el éxito correlaciona con dedicación a change management &gt;30% del presupuesto, no con sofisticación técnica. Diferencia: ERP era transformación obligatoria; aquí la IA es opcional, lo que hace que la resistencia sea <em>más</em> alta, no menos.</p>
+<p><strong>4. Palantir Foundry en clientes corporativos (2018-2023, reciente).</strong> Los Forward Deployed Engineers de Palantir son básicamente un servicio empaquetado de integración + change management cobrado a precio premium. Los reportes de earnings muestran que el modelo escaló en sectores regulados (defensa, salud, banca) donde el costo del fracaso compraba paciencia organizacional, y batalló en mid-market. Diferencia: la firma LATAM no tiene el producto propietario detrás, solo el servicio.</p>
+<p><strong>5. McKinsey QuantumBlack y BCG Gamma (2018-presente, reciente).</strong> Ambas pivotaron de &quot;vendemos modelos&quot; a &quot;vendemos adopción + casos de uso&quot; alrededor de 2020-2021 tras la oleada de pilotos de ML que no llegaron a producción. Hoy su oferta núcleo combina B+C+A. Diferencia: tienen marca y acceso C-suite que una firma LATAM mid-market probablemente no tiene.</p>
+<h4>Patrón común</h4>
+<p>Lo que <strong>funciona</strong> consistentemente: (i) empaquetar tecnología con change management como una sola SKU, no venderlos por separado; (ii) priorizar sectores regulados o donde el costo del fracaso compre paciencia organizacional; (iii) cobrar por outcome de adopción (usuarios activos, casos en producción), no por entregables técnicos; (iv) casos de uso curados y estrechos antes que plataformas amplias. Lo que <strong>falla</strong> repetidamente: vender infraestructura (plataformas, MLOps, gobierno) antes de que existan casos de uso adoptados que justifiquen esa infraestructura —es el error clásico de &quot;construir el almacén antes de tener mercancía&quot;. También falla apuntar a PYME con ofertas que requieren change management intensivo: el ciclo de venta y el ticket no soportan el costo de servicio.</p>
+<p>Lo que <strong>no generaliza</strong> bien: el modelo Palantir/McKinsey de premium pricing presupone marca y acceso a comité ejecutivo. Una firma LATAM de servicios mid-market probablemente compite por debajo y necesita un motor de repetibilidad, no de bespoke.</p>
+<h4>Conclusión</h4>
+<p><mark class="tk-a">Aplicado a su caso: priorizar en los próximos 6-9 meses <strong>A + C como oferta empaquetada núcleo</strong> (&quot;Copilot Adoption Program&quot; o equivalente: licenciamiento + casos de uso curados + formación + medición de adopción activa), con <strong>B como oferta complementaria obligatoria para sector regulado</strong> (banca, salud, seguros, utilities en LATAM), y <strong>E (agentes para procesos) como oferta de expansión</strong> dentro de cuentas donde A+C ya prendieron y existe baseline de uso</mark>. Posponer D (predictiva/optimización) y F (MLOps): ambas requieren madurez de datos del cliente que usted mismo declara desconocida, y el patrón histórico (Hadoop, ML pilots 2018-2020) muestra que vender estas dos antes de tener casos adoptados quema presupuesto y no genera retención.</p>
+<p>Segmento objetivo: <strong>corporativo de sector regulado primero</strong> (paciencia organizacional + presupuesto + B obligatorio = mayor margen y retención), <strong>gran corporativo no regulado segundo</strong> (driver de paridad competitiva más vivo aquí), <strong>PYME no</strong> en esta ventana —el costo de change management no se amortiza en tickets pequeños. Asignación tentativa del presupuesto de 20M en los primeros 9 meses: ~50% a construir la oferta empaquetada A+C con metodología repetible y 2-3 casos de uso ancla por industria, ~20% a la capa B para sector regulado, ~15% a piloto de E en 1-2 cuentas faro, ~15% reserva para mapear competidores y construir baseline de medición de adopción —que es su métrica de éxito declarada y hoy no la puede demostrar a clientes. Honestidad sobre la diferencia clave: a diferencia de Accenture o McKinsey, usted no tiene marca para cobrar premium; el patrón sugiere que su <mark class="tk-c">foso defendible será <strong>metodología de adopción medible y repetible</strong>, no profundidad técnica</mark>.</p>
+      </div>
+    </article>
+    
+
+    <article class="frame" data-frame="first-principles">
+      <div class="frame-row">
+        <span class="f-idx">#03</span>
+        <span class="f-name">
+          <span class="f-name-text">first-principles</span>
+          <span class="frame-model-chip frame-model-openai">openai/gpt-5</span>
+        </span>
+        <span class="f-lean">Priorizar en los próximos 6-9 meses: (1) A Formación + gestión del cambio y (1) C&hellip;</span>
+        <span class="f-bar"><i style="width:61%"></i></span>
+        <span class="f-d">d <b>0.075</b></span>
+        <span class="f-caret">›</span>
+      </div>
+      <div class="f-body">
+        <h4>Premisas</h4>
+<p>1) La adopción crea el valor: sin uso activo sostenido, cualquier capacidad de IA aporta ~0 valor económico, independientemente de su sofisticación técnica.</p>
+<p>2) La presión por paridad competitiva privilegia el “tiempo a primer valor” y el riesgo percibido bajo por encima de la diferenciación técnica o el ROI teórico máximo.</p>
+<p>3) La incertidumbre sobre madurez de datos/infraestructura del cliente obliga a priorizar soluciones con baja dependencia de datos propios y mínima integración inicial.</p>
+<p>4) El riesgo percibido (seguridad/compliance) actúa como freno binario en corporativos/regulados: sin guardrails explícitos no permiten escalar uso, aunque la utilidad sea alta.</p>
+<h4>Derivación</h4>
+<p>1) Si el valor ocurre solo cuando hay uso activo (Premisa 1), la oferta debe maximizar probabilidad de cambio de comportamiento al menor costo/tiempo. Formación + gestión del cambio (A) es el único elemento diseñado directamente para modificar conductas, por lo que es necesario como “motor de adopción” transversal a cualquier otra oferta.</p>
+<p>2) Con paridad como driver (Premisa 2), los clientes buscan victorias rápidas y visibles. La integración de GenAI/copilotos para conocimiento (C) produce utilidad inmediata con datos públicos/propios ligeros (baja dependencia, Premisa 3), en flujos horizontales (búsqueda, redacción, resumen) que tocan a la mayoría de usuarios. Por lo tanto, A y C en tándem maximizan “tiempo a primer valor” y % de usuarios activos.</p>
+<p>3) En corporativos/sectores regulados, incluso si A y C entregan valor, el escalamiento se bloquea sin un marco de gobierno/seguridad/compliance (B). Dado el carácter binario del freno (Premisa 4), B debe activarse en paralelo al despliegue de C en estos segmentos, no después, para evitar que pilotos exitosos queden detenidos.</p>
+<p>4) La automatización de procesos con agentes (E) puede generar ahorros, pero típicamente exige mayor rediseño de roles y genera resistencia (impacta la Premisa 1). Para mantener adopción, conviene acotarla a “micro-automatizaciones con humano-en-el-bucle” dentro de herramientas existentes, activadas solo tras crear hábito con C y capacidades de cambio con A. Así, E pasa a ser la tercera/cuarta prioridad, enfocada en tareas repetibles ya adoptadas por usuarios de C.</p>
+<p>5) La analítica predictiva/optimización (D) y MLOps/plataforma de datos (F) dependen críticamente de madurez de datos/integración (contrario a Premisa 3) y su “tiempo a valor” es mayor (contrario a Premisa 2). Con adopción como cuello, invertir primero en D/F desplaza recursos a tecnología antes de tener usuarios preparados. Por lo tanto, se posponen más allá de 9 meses.</p>
+<p>6) Segmentación derivada: <br>   - Corporativo no regulado y funciones de conocimiento intensivo: priorizar A+C para adopción amplia y rápida; B ligero para tranquilidad básica.<br>   - Corporativo regulado (finanzas, salud, energía): B en paralelo desde el inicio con A+C, porque sin B el escalamiento no ocurre.<br>   - PYME: solo A+C empaquetado y estandarizado; evitar B pesado y E compleja por unit economics y capacidad de cambio.</p>
+<p>7) Orden operativo y asignación de foco (primeros 6-9 meses, sobre el presupuesto total a 24 meses): <br>   - 1º: A (formación + cambio) como oferta core, productizada, ligada a métricas de adopción. <br>   - 1º en paralelo: C (copilotos de conocimiento) con plantillas listas por función (legal, ventas, operaciones back-office).<br>   - 2º en paralelo para corporativo/regulado: B (gobierno/compliance) con paquetes escalonados (básico/intermedio/avanzado) para no frenar velocidad.<br>   - 3º: E acotado a micro-automatizaciones en áreas que ya usan C, con humano-en-el-bucle y medido por reducción de tiempos de ciclo sin eliminar roles.</p>
+<p>8) Métricas alineadas a la decisión: <br>   - A+C aumentan % de usuarios activos y reducen semanas a primer caso productivo.<br>   - B habilita retención y expansión en corporativos (renovaciones y seats).<br>   - E mejora margen bruto por ticket al capturar automatizaciones concretas sin elevar mucho el costo de entrega.</p>
+<h4>Premisa que sostiene la cadena</h4>
+<p>Premisa 1 (la adopción crea el valor). Si el valor no dependiera del uso activo, el orden de prioridades podría invertirse hacia tecnología pesada (D/F).</p>
+<h4>Conclusión</h4>
+<p><mark class="tk-a">Priorizar en los próximos 6-9 meses: (1) A Formación + gestión del cambio y (1) C Integración de GenAI/copilotos para conocimiento, desplegados en conjunto como “paquete de adopción rápida”; (2) B Gobierno/seguridad/compliance en paralelo donde el cliente sea corporativo/regulado, con niveles modulares para no frenar velocidad; (3) E Automatización con agentes solo como micro-automatizaciones con humano-en-el-bucle en equipos que ya adoptaron C</mark>. Dejar D y F para después de 9 meses, cuando exista base de uso y casos estables. Foco de segmento: corporativo no regulado y funciones de conocimiento para A+C; corporativo regulado con B en paralelo; PYMEs solo con A+C estandarizado. Esta secuencia maximiza uso activo y tiempo a primer valor, protege margen bruto en servicios de alto apalancamiento humano (A) y desbloquea retención/expansión en corporativos vía B, alineándose con la presión de paridad competitiva y el cuello de botella de adopción.</p>
+      </div>
+    </article>
+    
+
+    <article class="frame" data-frame="empirical">
+      <div class="frame-row">
+        <span class="f-idx">#01</span>
+        <span class="f-name">
+          <span class="f-name-text">empirical</span>
+          <span class="frame-model-chip frame-model-openai">openai/gpt-5</span>
+        </span>
+        <span class="f-lean">Los números sugieren que, con un horizonte de 6-9 meses y adopción como cuello de botella&hellip;</span>
+        <span class="f-bar"><i style="width:61%"></i></span>
+        <span class="f-d">d <b>0.076</b></span>
+        <span class="f-caret">›</span>
+      </div>
+      <div class="f-body">
+        <h4>Números que estoy usando como ancla</h4>
+<p>- Programas de formación + gestión del cambio elevan la adopción activa de nuevas herramientas entre +15 y +30 puntos porcentuales vs. no intervenir, medido a 90 días (IC90%: +10 a +35 pp) [study]. Ciclos de venta: 2-8 semanas en cuentas existentes (IC90%: 2-12) [industry-data].<br>- GenAI/copilotos en flujos de conocimiento (búsqueda/QA interna, resumen, drafting) pasan de piloto a producción en 4-8 semanas (IC90%: 3-10) y logran 40-60% de usuarios activos mensuales cuando se integran en herramientas existentes (IC90%: 30-65%) [industry-data].<br>- Gobierno/seguridad/cumplimiento de IA representa 10-20% del gasto de programas de IA en sectores regulados (IC90%: 8-25%); ciclos de compra liderados por CISO/Legal: 3-6 meses en corporativo LATAM (IC90%: 2-8) [industry-data].<br>- Automatización de procesos con agentes entrega payback en 6-12 meses en back-office (IC90%: 4-14) pero tasa de fallas/estancamiento sin rediseño de procesos de 30-50% (IC90%: 25-55%) [study].<br>- MLOps/plataforma de datos: ciclos de venta 6-12 meses (IC90%: 5-15), tickets altos pero ingeniería intensiva; margen bruto servicios 25-45% (IC90%: 20-50%). Formación/gestión del cambio: margen 50-70% (IC90%: 45-75%); integración/copilotos: 35-55% (IC90%: 30-60%) [industry-data]. [assumption] Moneda: USD.</p>
+<h4>Qué implican los datos</h4>
+<p>(1) Premisas reconocidas: presupuesto 20M USD/24 meses [assumption], “necesidad” guiada por paridad competitiva, cuello de botella principal es adopción organizacional confirmada, madurez tecnológica de clientes desconocida, y métricas de éxito centradas en adopción activa, tiempo a valor, margen y retención. Base rates arriba indican: a) intervenciones de cambio elevan adopción en +15-30 pp [study]; b) ofertas con TtV &lt;2 meses (formación y copilotos de conocimiento) tienden a sostener 40-60% de MAU cuando se integran en herramientas ya usadas [industry-data]; c) funciones de gobierno desbloquean compras en corporativo/regulado con ciclos medianos (3-6 meses) y financiamiento propio (10-20% del budget de IA) [industry-data]; d) automatización con agentes tiene ROI potencial (payback 6-12 meses) pero mayor tasa de fallas si no hay rediseño [study]; e) plataformas/MLOps y analítica avanzada implican ciclos más largos y dependencia de datos limpios, lo que retrasa adopción visible.</p>
+<p>(2) Razonamiento paso a paso: dado que la adopción es el cuello de botella, la palanca con mayor efecto directo en la métrica “% usuarios activos sostenida” es A (formación+gestión del cambio), con un efecto marginal esperado de +15-30 pp (IC90%: +10 a +35) sobre cualquier solución técnica desplegada. Para “tiempo a valor” en semanas, C (copilotos de conocimiento) y A presentan TtV de 4-8 y 1-4 semanas respectivamente (IC90%: 3-10 y 1-6) [industry-data][study], lo que alinea con el objetivo de mostrar valor rápido y sostener el uso. B (gobierno/seguridad) actúa como habilitador en corporativo/regulado: sin políticas, privacidad y controles, la adopción de C y E se bloquea o se limita a pilotos; además, hay presupuesto asignado (10-20% del gasto de IA) y ciclos de 3-6 meses [industry-data], contribuyendo a margen/retención al institucionalizar el programa. E (automatización con agentes) tiene payback 6-12 meses [study], lo que puede demostrar valor económico en &lt;12 meses, pero su tasa de fallas de 30-50% sin rediseño sugiere depender de A para mitigar riesgo y reservar E para procesos bien acotados (atención interna, finanzas AP/AR) donde el TtV sea &lt;12 semanas [assumption].</p>
+<p>(3) Segmentación por probabilidad de cierre y adopción: en corporativos/sectores regulados en LATAM, los ciclos típicos de compra de servicios enterprise son 6-9 meses (IC90%: 5-12) y 3-6 meses cuando la entrada es cumplimiento/seguridad [industry-data]. Esto implica que la combinación B+A como “puerta de entrada” acelera cierres y legitima C. En pymes, los ciclos son 2-4 meses (IC90%: 1-6) pero con tickets menores; allí C+A maximizan TtV y adopción sin la sobrecarga de B [industry-data]. D (analítica predictiva/optimización) suele requerir 3-6 meses al primer valor (IC90%: 2-9) y depende de datos y sponsors de negocio, por lo que su contribución a adopción rápida es menor frente a C/E [study]. F (MLOps/plataforma) con ciclos 6-12 meses y márgenes 25-45% [industry-data] aporta menos a las métricas de corto plazo (6-9 meses) y consume más presupuesto de ingeniería.</p>
+<p>(4) Orden implícito bajo estas tasas base y métricas: para maximizar adopción activa y TtV en 6-9 meses con margen saludable, la combinación con mayor probabilidad de entregar resultados medibles es A → C → B → E en corporativo/regulado, donde A eleva uso (+15-30 pp), C muestra valor en 4-8 semanas con 40-60% MAU, B desbloquea escalamiento con ciclos 3-6 meses y presupuestos dedicados (10-20%), y E aporta casos de ROI con payback 6-12 meses cuando se eligen procesos acotados. En pymes, el orden implícito es A → C → E, dejando B opcional por menor presión regulatoria [assumption]. D y F muestran menor contribución a las métricas objetivo en la ventana de 6-9 meses por ciclos y dependencias de datos.</p>
+<h4>Conclusión</h4>
+<p>Los números sugieren que, con un horizonte de 6-9 meses y adopción como cuello de botella, las ofertas con mayor probabilidad de mover “% de usuarios activos” y “tiempo a valor” son: (A) formación+gestión del cambio y (C) copilotos de conocimiento, habilitadas por (B) gobierno en corporativo/regulado, y complementadas por (E) automatización en procesos bien acotados. <mark class="tk-a">En corporativos/sectores regulados, la secuencia implícita es A → C → B → E; en pymes, A → C → E, con B según exigencias de cumplimiento</mark>. Estas inferencias se apoyan en efectos de adopción de +15-30 pp [study], TtV de 1-8 semanas [industry-data], presupuestos de cumplimiento de 10-20% [industry-data] y paybacks de 6-12 meses en automatización [study]. Lo que los datos no resuelven sin medición adicional es la madurez real de datos de cada cliente, el mapa competitivo local y los costos base de procesos; por lo tanto, los intervalos declarados (IC90% en cada cifra) delimitan la incertidumbre restante.</p>
+      </div>
+    </article>
+    
+
+    <article class="frame" data-frame="analogical">
+      <div class="frame-row">
+        <span class="f-idx">#04</span>
+        <span class="f-name">
+          <span class="f-name-text">analogical</span>
+          <span class="frame-model-chip frame-model-anthropic">anthropic/sonnet-4-6</span>
+        </span>
+        <span class="f-lean">Finalmente, ninguna analogía resuelve la restricción más crítica que mencionas: no tienes&hellip;</span>
+        <span class="f-bar"><i style="width:70%"></i></span>
+        <span class="f-d">d <b>0.087</b></span>
+        <span class="f-caret">›</span>
+      </div>
+      <div class="f-body">
+        <h2>Priorización de Ofertas de IA: Marco Analógico</h2>
+<h3>Premisas que reconozco en el problema</h3>
+<p>El cuello de botella no es tecnológico sino conductual. La empresa vende servicios de IA pero sus clientes no adoptan porque hay resistencia organizacional, no porque falte tecnología. El driver es paridad competitiva (&quot;no quedar atrás&quot;), lo que implica que el cliente compra por miedo, no por visión. Con 20M y 24 meses, hay que generar victorias tempranas visibles que reduzcan ese miedo y construyan momentum interno en el cliente. Las métricas clave son adopción activa sostenida y tiempo a valor, no sofisticación técnica. Esto es un problema de difusión de innovación dentro de organizaciones conservadoras, no un problema de arquitectura de sistemas.</p>
+<hr>
+<h4>Analogía 1</h4>
+<p><strong>Dominio: Epidemiología / Teoría de difusión de enfermedades infecciosas (R₀ y vectores de transmisión)</strong></p>
+<p><strong>Mapeo estructural:</strong></p>
+<p>En epidemiología, una enfermedad se propaga cuando el número reproductivo básico R₀ &gt; 1: cada caso infecta a más de uno. Pero el R₀ depende críticamente de <em>quién</em> se infecta primero. Los epidemiólogos distinguen entre <em>superspreaders</em> (nodos de alta conectividad que amplifican la difusión) y población general. La estrategia óptima no es vacunar/infectar a todos simultáneamente, sino identificar los vectores de mayor conectividad y actuar sobre ellos primero.</p>
+<p>| Epidemiología | Tu caso |<br>|---|---|<br>| Patógeno | Práctica de IA (el &quot;uso real&quot;) |<br>| Huésped susceptible | Empleado del cliente |<br>| Superspreader | Champion interno / líder de área |<br>| R₀ | Tasa de adopción interna por área |<br>| Cuarentena / resistencia | Resistencia organizacional al cambio |<br>| Vector de transmisión | Oferta de servicio que &quot;infecta&quot; primero |</p>
+<p><strong>Dónde sostiene:</strong> La adopción organizacional se propaga exactamente así. Un área que adopta con éxito visible &quot;contagia&quot; a otras áreas. El primer caso productivo (tu métrica &quot;tiempo a valor&quot;) es el paciente cero que genera el R₀ interno. Si el primer caso falla o es invisible, la difusión muere. La oferta A (formación + gestión del cambio) es el vector de transmisión: no es el patógeno, es el mecanismo que hace que el patógeno entre al huésped.</p>
+<p><strong>Dónde rompe:</strong> En epidemiología, el huésped no elige infectarse. En adopción organizacional, el &quot;huésped&quot; tiene agencia, jerarquía y política interna. El R₀ organizacional depende de incentivos y poder, no solo de contacto. Además, en epidemiología el patógeno es homogéneo; aquí cada oferta de IA (C, D, E) tiene distinta fricción de adopción.</p>
+<hr>
+<h4>Analogía 2</h4>
+<p><strong>Dominio: Estrategia militar / Doctrina de &quot;schwerpunkt&quot; y concentración de fuerza (Clausewitz / Blitzkrieg)</strong></p>
+<p><strong>Mapeo estructural:</strong></p>
+<p>La doctrina del <em>Schwerpunkt</em> (punto de gravedad) establece que en una campaña con recursos limitados, no se distribuye la fuerza uniformemente: se identifica el punto donde la ruptura genera colapso sistémico del adversario, y se concentra ahí de forma desproporcionada. El objetivo no es ganar todos los frentes simultáneamente, sino crear una brecha que haga que los otros frentes se vuelvan irrelevantes o se resuelvan solos.</p>
+<p>| Doctrina militar | Tu caso |<br>|---|---|<br>| Recursos limitados (tropas, logística) | 20M / 24 meses |<br>| Frentes múltiples | Ofertas A-F |<br>| Schwerpunkt (punto de ruptura) | Oferta que desbloquea adopción masiva |<br>| Terreno ganado | Clientes con adopción activa sostenida |<br>| Líneas de suministro | Capacidad de delivery del equipo consultor |<br>| Victoria táctica que genera colapso estratégico | Caso de éxito visible que elimina resistencia en otras áreas |</p>
+<p><strong>Dónde sostiene:</strong> Con cuello de botella en adopción, el Schwerpunkt es claro: la oferta que reduce la resistencia organizacional más rápido y con mayor visibilidad. Distribuir los 20M entre las 6 ofertas simultáneamente es el error clásico de &quot;frentes múltiples sin ruptura&quot;. La concentración en 3-4 ofertas con secuencia lógica (no paralela) replica la lógica del Schwerpunkt: romper primero donde hay menor resistencia y mayor visibilidad, luego explotar la brecha.</p>
+<p><strong>Dónde rompe:</strong> En guerra, el adversario reacciona activamente a tu concentración. Aquí, los competidores de tu empresa de servicios no necesariamente responden a tu movimiento en tiempo real. Además, el Schwerpunkt asume que tienes inteligencia del terreno (madurez tech del cliente, costos baseline); tú explícitamente no la tienes, lo que aumenta el riesgo de apostar al punto equivocado.</p>
+<hr>
+<h4>Analogía 3</h4>
+<p><strong>Dominio: Finanzas / Estructura de capital y deuda subordinada (financiamiento en capas)</strong></p>
+<p><strong>Mapeo estructural:</strong></p>
+<p>En finanzas corporativas, cuando se financia un proyecto con múltiples instrumentos, existe una jerarquía de prelación: primero deuda senior (la más segura, se paga primero), luego deuda subordinada, luego equity. La deuda senior no genera el mayor retorno, pero es la que <em>habilita</em> que el resto de la estructura exista. Sin ella, el proyecto no arranca. El error del emprendedor inexperto es ir directo al equity (alto retorno, alta visibilidad) sin asegurar la deuda senior primero.</p>
+<p>| Finanzas | Tu caso |<br>|---|---|<br>| Deuda senior (habilita la estructura) | Oferta A: formación + gestión del cambio |<br>| Deuda subordinada (retorno medio, riesgo medio) | Ofertas C y D: GenAI/copilotos + analítica predictiva |<br>| Equity (alto retorno, alta dependencia) | Oferta E: automatización con agentes |<br>| Covenant / condición de la deuda | Madurez mínima del cliente para recibir la oferta |<br>| Default del proyecto | Cliente que no adopta y abandona |<br>| Retorno sobre capital | Margen bruto + retención de cliente |</p>
+<p><strong>Dónde sostiene:</strong> La oferta A (formación + gestión del cambio) es la deuda senior de tu portafolio: no genera el mayor margen bruto por sí sola, pero sin ella las otras ofertas defaultean (el cliente no adopta, abandona, y el caso de éxito no existe). Las ofertas C y D son deuda subordinada: generan valor visible y medible (tiempo a valor bajo, adopción activa posible) con riesgo moderado. La oferta E (agentes) es equity: alto potencial, pero requiere que la estructura base ya esté sólida.</p>
+<p><strong>Dónde rompe:</strong> En finanzas, los instrumentos son contractualmente independientes. Aquí, las ofertas son interdependientes en la experiencia del cliente: si A falla, C y D también fallan, pero no por razones financieras sino por razones políticas internas del cliente. Además, la &quot;prelación&quot; en adopción no es legal sino conductual, lo que la hace más frágil.</p>
+<hr>
+<h4>Qué sugieren las analogías</h4>
+<p>Las tres analogías convergen en una secuencia, no en una selección paralela. El mecanismo común es: <strong>primero habilitar la condición de posibilidad, luego explotar la brecha creada</strong>.</p>
+<p><mark class="tk-a"><strong>Priorización sugerida para los primeros 6-9 meses:</strong></mark></p>
+<p><strong>1. Oferta A (Formación + Gestión del Cambio) — OBLIGATORIA, no opcional</strong><br>Es el vector de transmisión (epidemiología), la deuda senior (finanzas) y el Schwerpunkt inicial (militar). Sin ella, las otras ofertas tienen tasa de adopción cercana a cero dado el cuello de botella confirmado. No como oferta standalone de &quot;capacitación genérica&quot;, sino como componente embebido en cada engagement. Modelo recomendado: no venderla sola, sino incluirla como capa obligatoria en C, D y E. Esto resuelve el problema de margen bruto bajo de A: se amortiza en el precio de las otras.</p>
+<p><strong>2. Oferta C (GenAI/Copilotos para conocimiento) — PRIMERA OFERTA TÉCNICA</strong><br>Tiempo a valor más corto del portafolio. El copiloto de conocimiento (búsqueda semántica, síntesis de documentos, asistente de preguntas) genera un caso productivo visible en 2-6 semanas. No requiere datos históricos limpios (resuelve tu restricción de &quot;no baseline de costos manuales&quot;). Funciona en PYME y corporativo. Es el &quot;paciente cero&quot; que genera R₀ interno. Segmento prioritario: <strong>corporativo mid-market</strong> (50-500 empleados, no regulado), donde la resistencia existe pero hay un champion identificable y el ciclo de decisión es manejable.</p>
+<p><strong>3. Oferta D (Analítica Predictiva/Optimización para Operaciones) — SEGUNDA OFERTA TÉCNICA</strong><br>Genera el caso de negocio cuantificable que el cliente necesita para justificar internamente la inversión continua. Requiere algo más de madurez de datos que C, pero no MLOps completo. Segmento prioritario: <strong>corporativo con operaciones repetibles</strong> (retail, logística, manufactura en LATAM). Aquí el driver de paridad competitiva es más agudo porque los competidores del cliente tienen métricas operacionales visibles.</p>
+<p><strong>4. Oferta B (Gobierno/Seguridad/Cumplimiento) — OFERTA DE RETENCIÓN, no de adquisición</strong><br>No como oferta de entrada, sino como upsell en el mes 4-6 una vez que el cliente ya tiene algo funcionando con C o D. En sector regulado (financiero, salud), puede ser la oferta de entrada, pero ese segmento tiene ciclos de venta de 6-12 meses que no encajan con el horizonte de 6-9 meses. Incluirla en el portafolio como señal de seriedad, pero no como foco de inversión inicial.</p>
+<p><strong>Ofertas diferidas (meses 9-24):</strong><br>- <strong>E (Agentes):</strong> Alto potencial, pero requiere que el cliente ya tenga adopción activa de C o D. Lanzar en mes 9-12 como oferta premium para clientes que completaron el ciclo C+A o D+A.<br>- <strong>F (MLOps/Plataforma de datos):</strong> Oferta de infraestructura que solo tiene sentido cuando el cliente ya tiene múltiples modelos en producción. Horizonte mes 15-24, o como subcontrato con un partner técnico para no inmovilizar capital propio.</p>
+<p><mark class="tk-a"><strong>Segmento de cliente para los primeros 6-9 meses:</strong></mark> Corporativo mid-market no regulado. Las PYME tienen ciclos de decisión cortos pero presupuestos que no sostienen el margen bruto necesario. El sector regulado tiene el presupuesto pero los ciclos de venta y compliance matan el &quot;tiempo a valor&quot;. El corporativo mid-market es el equilibrio: champion identificable, presupuesto suficiente, urgencia real por paridad competitiva.</p>
+<hr>
+<h4>Límites del razonamiento analógico aquí</h4>
+<p>Las tres analogías asumen información que no tienes. La doctrina del Schwerpunkt requiere inteligencia del terreno: tú no tienes baseline de costos manuales del cliente ni mapa de madurez tech. Esto significa que la secuencia A→C→D es una hipótesis de trabajo, no una certeza estratégica. La analogía epidemiológica asume que puedes identificar superspreaders (champions internos) antes de entrar al cliente, lo que en la práctica requiere un proceso de calificación de oportunidades que puede no existir aún en tu empresa.</p>
+<p>La analogía financiera es la más frágil de las tres: trata las ofertas como instrumentos independientes con riesgo calculable, pero en la realidad del cliente, el fracaso de A no es un &quot;default técnico&quot; sino un fenómeno político (el sponsor pierde poder, cambia el CEO, hay reorganización). Eso no se modela con prelación financiera.</p>
+<p>Finalmente, ninguna analogía resuelve la restricción más crítica que mencionas: no tienes mapeados a tus competidores de servicio. Si un competidor ya está ofreciendo A+C como bundle a precio agresivo en tu mercado objetivo, toda esta secuencia puede ser correcta en abstracto pero llegar tarde. La priorización aquí es necesaria pero no suficiente: necesita validarse contra el mercado real en las primeras 8-12 semanas con al menos 3-5 conversaciones de discovery con clientes potenciales antes de comprometer el presupuesto de desarrollo de oferta.</p>
+      </div>
+    </article>
+    
+
+    <article class="frame" data-frame="radical-optimist">
+      <div class="frame-row">
+        <span class="f-idx">#08</span>
+        <span class="f-name">
+          <span class="f-name-text">radical-optimist</span>
+          <span class="frame-model-chip frame-model-openai">openai/gpt-5</span>
+        </span>
+        <span class="f-lean">Riesgos en una línea: adopción puede estancarse por cultura/mandos medios&hellip;</span>
+        <span class="f-bar"><i style="width:87%"></i></span>
+        <span class="f-d">d <b>0.108</b></span>
+        <span class="f-caret">›</span>
+      </div>
+      <div class="f-body">
+        <h4>10× upside</h4>
+<p>Premisas reconocidas: el cuello de botella es la adopción, no la tecnología; los clientes compran por paridad competitiva y quieren valor en semanas; la empresa es integradora/consultora en LATAM con 20M/24 meses; métricas que importan: adopción activa, tiempo a valor, margen bruto, retención.</p>
+<p>Camino de Upside 10×: te conviertes en “el estándar LATAM” para adopción de IA con un portafolio de 3-4 ofertas que aterrizan valor en 4-8 semanas y escalan por playbooks repetibles. En 12-18 meses: 50-70 logos mid/enterprise, 25-40k usuarios activos mensuales en copilotos/GenAI, 12-16 casos de automatización con agentes en producción por cliente ancla, 65-70% margen bruto en servicios productizados; churn &lt;5%. Orquestas tres capas en orden: (1) Adoption-as-a-Service (A) que mueve cultura y medición de uso; (2) Copilotos de conocimiento listos-para-empresa (C) que demuestran utilidad diaria; (3) Gobierno/seguridad (B) que desatranca compliance y habilita despliegues amplios; (4) Automatización con agentes (E) en procesos back-office con payback &lt;6 meses. Segmento objetivo: corporativos mid-market y enterprise no regulados para “aterrizar rápido”, y luego regulados (finanzas/seguros/energía) apalancando B para expansión. Orden de priorización 6-9 meses: A y C en paralelo como punta de lanza; B para cuentas enterprise/reguladas en cuanto haya tracción de uso; E como upsell en áreas donde C ya ganó adopción. Asigna el presupuesto así: A 35%, C 30%, B 20%, E 15%, optimizando margen por estandarización y alianzas con vendors.</p>
+<h4>Unlock conditions</h4>
+<p>- Playbooks repetibles y medibles: un “AI Adoption Sprint 90 días” que incluye formación por rol, red de champions, nudges de comportamiento y dashboards de uso; KPIs contractuales atados a % de usuarios activos y tiempo a primer caso productivo.<br>- Ofertas listas-para-empresa: paquetes de C con conectores a suites (Microsoft 365/Google Workspace/Slack), bibliotecas de prompts por función, guardrails de datos y telemetría de uso; catálogos reutilizables por industria.<br>- Confianza/compliance como acelerador, no freno: kits de B con evaluaciones de riesgo, políticas, DLP, revisión legal y plantillas de auditoría que permitan a compras/seguridad decir “sí” en semanas.<br>- Go-to-market segmentado: “land” en corporativos no regulados de 1-5 mil empleados con dolor claro en service, ventas, finanzas; “expand” a regulados con B; diseño de pricing por activación/seat y paquetes de resultados (p.ej., “1000 usuarios activos en 60 días”).<br>- Capacidades internas: pods interdisciplinarios (change + soluciones + seguridad), acuerdos con hyperscalers/ISVs para GTM y descuentos, y una capa de observabilidad de adopción (instrumentación, cohortes, A/B de nudges).<br>- Biblioteca de casos de agentes (E) con ROIs demostrados por proceso (atención L1, conciliaciones, onboarding, cobranza ligera) y conectores a ERP/CRM comunes en LATAM.</p>
+<h4>Adjacent opportunities unlocked downstream</h4>
+<p>- Con adopción sostenida, abres D (analítica predictiva/optimización) donde ya hay datos de uso y sponsors internos comprometidos; vendes “use-cases packs” por dominio con mayor margen.<br>- Con B operativo en regulados, abres servicio gestionado de “AI Governance as a Service” y auditorías recurrentes (ingresos defensibles y sticky).<br>- Con C + E desplegados, lanzas marketplace de prompts/agentes por industria y un programa de revenue share con partners locales; expansión geográfica a Cono Sur/Andina y nearshore a clientes hispanos en EE. UU.<br>- Con telemetría propia de adopción, construyes benchmarks LATAM y ofertas de consultoría estratégica de madurez que elevan ticket y posicionamiento.</p>
+<h4>Brief reality check</h4>
+<p>Riesgos en una línea: adopción puede estancarse por cultura/mandos medios, cuellos de seguridad/regulación, calidad de datos/IT legado, y dependencia de vendors; mitiga con contratos por activación, pilotos pagados de 90 días, playbooks estandarizados, alianzas formales y foco en procesos con datos “suficientemente buenos”.</p>
+      </div>
+    </article>
+    
+
+    <article class="frame" data-frame="pre-mortem">
+      <div class="frame-row">
+        <span class="f-idx">#09</span>
+        <span class="f-name">
+          <span class="f-name-text">pre-mortem</span>
+          <span class="frame-model-chip frame-model-openai">openai/gpt-5</span>
+        </span>
+        <span class="f-lean">- Anclar cada oferta a casos con baseline firmado y medición de hábito desde el día 1&hellip;</span>
+        <span class="f-bar"><i style="width:96%"></i></span>
+        <span class="f-d">d <b>0.119</b></span>
+        <span class="f-caret">›</span>
+      </div>
+      <div class="f-body">
+        <h4>Narrativa de fracaso a los T+18m</h4>
+<p>Premisas reconocidas: la empresa de servicios de IA en LATAM tenía 20M para 24 meses, con la adopción organizacional como cuello de botella y la “paridad competitiva” de los clientes como motivador. Se definieron métricas de éxito como adopción activa, tiempo a valor, margen bruto y retención. El portafolio priorizado en los primeros 6-9 meses fue: (A) formación + gestión del cambio, (C) integración de GenAI/copilotos para conocimiento, (E) automatización de procesos con agentes, y (B) gobierno/seguridad/cumplimiento de IA “ligero” como anexo. Se apuntó a corporativos y sectores regulados por ticket potencial, asumiendo que la urgencia por paridad aceleraría compras. No se tenían baselines de costos de los clientes ni un mapeo de su madurez tecnológica.</p>
+<p>Aplicando el marco premortem: 18 meses después, el programa fracasó en sus métricas clave. Hubo ventas iniciales por la presión de “no quedarse atrás”, pero la adopción activa sostenida fue baja; los tiempos a valor se estiraron por dependencias internas del cliente; el margen bruto cayó por exceso de horas no facturables; y la retención se erosionó en las primeras renovaciones. La narrativa operativa es que el portafolio atrajo interés, pero no logró anclar uso cotidiano ni justificar ROI. En corporativos regulados, las iniciativas se frenaron en seguridad y compliance; donde sí se aprobó, los copilotos y agentes chocaron con carencias de datos, permisos y procesos difusos. Formación sin casos concretos quedó como “evento” sin conversión a hábito.</p>
+<p>Conclusión: la decisión falló no por la tecnología, sino por la secuencia y el encuadre comercial. Se vendieron “soluciones visibles” (copilotos, automatización) a cuentas complejas sin resolver ex ante las precondiciones de datos, gobierno y sponsors operativos; se persiguieron sectores con ciclos de compra largos; y se prometieron mejoras sin baseline. Al llegar la primera renovación, faltaron casos productivos con uso sostenido y P&amp;L verificable, y el miedo a “quedarse atrás” ya no sostuvo el gasto.</p>
+<h4>Modos de falla</h4>
+<p>1) Adopción superficial de copilotos de conocimiento (C) que se “apagan” tras el piloto<br>- Mecanismo: se desplegaron copilotos integrados a Suite O365/Slack/Confluence sin mapeo de tareas diarias ni curaduría de fuentes. El resultado fueron respuestas inconsistentes y bajo encaje en flujos reales (ventas, legal, soporte). Los champions internos no tenían tiempo ni mandato para rediseñar rituales. Tras 60-90 días, el WAU/MAU cayó y las áreas pidieron pausar licencias.<br>- Indicador líder: porcentaje de sesiones con “acción completada” en el flujo core &lt;20% durante las 4-6 primeras semanas del piloto, y tasa de recurrencia semanal por usuario &lt;30%.</p>
+<p>2) Bloqueo prolongado en seguridad/compliance en corporativos regulados para agentes (E) y copilotos (C)<br>- Mecanismo: se firmaron SOWs condicionados, pero los comités de seguridad exigieron revisiones de data residency, PII, retención y trazabilidad de prompts. Sin un paquete de gobierno profundo (B) y sin owning claro del cliente, los proyectos quedaron “en evaluación” por 3-6 meses, quemando horas preventa y delivery.<br>- Indicador líder: más de 2 rondas de InfoSec sin cierre, y tiempo desde kickoff a aprobación de acceso a datos &gt;60 días en &gt;50% de cuentas reguladas.</p>
+<p>3) Incapacidad de demostrar ROI por falta de baseline y trazabilidad de casos<br>- Mecanismo: se prometió “eficiencia” sin acuerdos de línea base ni instrumentación. Al llegar Q2-Q3, compras y finanzas pidieron evidencia de ahorro/tiempo a valor. Sin métricas firmadas, las áreas usuarias no defendieron el presupuesto; renovaciones se redujeron o cancelaron.<br>- Indicador líder: menos del 30% de los proyectos con baseline validado antes del go-live, y dashboards de uso sin métricas de “tiempo ahorrado por caso” o “casos automatizados” aceptadas por el dueño del proceso.</p>
+<p>4) Erosión de margen bruto por sobre-esfuerzo de integración y re-trabajos<br>- Mecanismo: la heterogeneidad de fuentes (SharePoint desordenado, CRMs legacy, permisos fragmentados) llevó a muchas horas de limpieza, conectores ad hoc y retrabajos. El pricing basado en paquetes fijos no cubrió el esfuerzo; el margen bruto cayó por debajo de 30% en múltiples cuentas.<br>- Indicador líder: ratio horas no facturables/horas facturables &gt;0.35 en los primeros dos proyectos por vertical; número de cambios de alcance por proyecto &gt;3 antes del go-live.</p>
+<p>5) Desalineación de segmento: enfoque en grandes corporativos con ciclos de venta y adopción más lentos que el runway<br>- Mecanismo: el pipeline se pobló con logos grandes por “señal de mercado”, pero el promedio de ciclo de venta &gt;150 días y de implementación &gt;120 días retrasó ingresos y casos productivos. El burn de preventa y delivery temprano consumió caja sin generar referencias de adopción sostenida.<br>- Indicador líder: tiempo medio desde primer meeting a primer caso en producción &gt;180 días, y tasa de proyectos que alcanzan 100 usuarios activos sostenidos &lt;20% al mes 3.</p>
+<h4>Señales de advertencia tempranas</h4>
+<p>- Uso y hábito:<br>  - WAU/MAU por caso y área; porcentaje de usuarios que completan 3+ sesiones/semana.<br>  - Tasa de recurrencia a semana 4 y 8 post-despliegue.<br>  - “Acciones completadas” en flujos definidos vs sesiones totales.</p>
+<p>- Gobernanza y acceso:<br>  - Días desde kickoff a aprobación de acceso a datos y a pasar revisión de seguridad.<br>  - Número de rondas con InfoSec/Legal por proyecto.</p>
+<p>- ROI y baseline:<br>  - Porcentaje de proyectos con baseline de tiempo/costo firmado antes del build.<br>  - Número de casos con métricas de impacto aceptadas por el dueño del proceso al mes 1.</p>
+<p>- Economía del servicio:<br>  - Margen bruto por proyecto; horas no facturables/horas facturables.<br>  - Número de cambios de alcance y retrabajos por integración.</p>
+<p>- Comercial y adopción por segmento:<br>  - Tiempo de venta (lead to close) y lead to first value.<br>  - Porcentaje de proyectos que alcanzan 100+ usuarios activos sostenidos al mes 3.</p>
+<h4>Qué habría cambiado el resultado</h4>
+<p>- Anclar cada oferta a casos con baseline firmado y medición de hábito desde el día 1, convirtiendo “formación” en programas ligados a tareas y KPIs operativos específicos.<br><mark class="tk-a">- Secuenciar el portafolio comenzando por cuentas y procesos con bajo roce de compliance y datos accesibles, para generar casos productivos en 6-8 semanas antes de escalar a regulados.</mark><br>- Incluir un paquete robusto de gobierno/seguridad como puerta de entrada en corporativos, con aceleradores y ownership claro del lado del cliente para acortar revisiones.<br>- Ajustar pricing y scope a la variabilidad de integración (diagnóstico pagado y timebox), protegiendo margen y evitando retrabajos.<br><mark class="tk-a">- Priorizar segmentos con ciclos más cortos (mid-market con suites estándar) para construir referencias de adopción activa y time-to-value que respalden expansión posterior.</mark></p>
+      </div>
+    </article>
+    
+
+    <article class="frame" data-frame="ethical">
+      <div class="frame-row">
+        <span class="f-idx">#06</span>
+        <span class="f-name">
+          <span class="f-name-text">ethical <span class="f-mark farthest">más lejano</span></span>
+          <span class="frame-model-chip frame-model-anthropic">anthropic/sonnet-4-6</span>
+        </span>
+        <span class="f-lean">La posición defendible — no la cómoda — es esta: vender C como la promesa visible&hellip;</span>
+        <span class="f-bar"><i style="width:100%"></i></span>
+        <span class="f-d">d <b>0.124</b></span>
+        <span class="f-caret">›</span>
+      </div>
+      <div class="f-body">
+        <p>Voy a responder la pregunta estratégica de negocio, pero primero debo hacer explícito el marco ético que la atraviesa, porque hay decisiones aquí que no son puramente instrumentales.</p>
+<hr>
+<h4>Stakeholders y lo que se les debe</h4>
+<p><strong>1. Empresas-cliente (compradores del servicio):</strong> Se les debe honestidad sobre qué resuelve realmente su problema. Si el cuello de botella es adopción organizacional, venderles primero tecnología sofisticada (MLOps, agentes autónomos) sin base de cambio cultural sería extraer valor sin entregarlo. Se les debe también transparencia sobre riesgos: implementar IA bajo presión de paridad competitiva sin gobierno adecuado puede crear pasivos legales, sesgos operativos y dependencia tecnológica que no controlan.</p>
+<p><strong>2. Empleados de las empresas-cliente (usuarios finales de la IA):</strong> Son los que absorben las consecuencias de la adopción sin necesariamente decidirla. Se les debe que el proceso de cambio no sea coercitivo ni que los deje obsoletos sin red de soporte. La &quot;gestión del cambio&quot; no puede ser eufemismo para hacer más digerible una reducción de fuerza laboral que nadie nombra.</p>
+<p><strong>3. La empresa de servicios de IA (tú):</strong> Se le debe viabilidad financiera honesta — pero también coherencia entre lo que vende y lo que puede entregar. Priorizar ofertas que generan ingresos rápidos pero no resuelven el problema real del cliente destruye retención a 24 meses.</p>
+<p><strong>4. Reguladores y sociedad en LATAM:</strong> En sectores regulados (salud, finanzas, gobierno), implementar IA sin gobierno adecuado transfiere riesgo sistémico a terceros que no participaron en la decisión. Se les debe que el proveedor no externalice ese riesgo.</p>
+<hr>
+<h4>Tensión</h4>
+<p>La tensión central es esta: <strong>el driver del cliente es paridad competitiva (miedo), no transformación genuina</strong>. Eso crea una presión deontológica vs. consecuencialista muy concreta.</p>
+<p><strong>Lente deontológico:</strong> Si sabes que el cliente compra por miedo y no por comprensión real del problema, tienes una obligación de no explotar esa asimetría de información. Venderle primero las ofertas más visibles y &quot;sexys&quot; (E: agentes autónomos, C: copilotos GenAI) cuando el cuello de botella es humano-organizacional, es técnicamente honesto pero éticamente cuestionable — estás resolviendo el problema equivocado con el presupuesto del cliente.</p>
+<p><strong>Lente consecuencialista:</strong> A 1 año, las ofertas de mayor ticket y visibilidad (C, E) generan más ingresos y casos de éxito aparentes. A 5 años, si la adopción fracasa porque no se trabajó el cambio cultural (A) ni el gobierno (B), los clientes abandonan, el NPS colapsa y el mercado LATAM te asocia con proyectos fallidos. El consecuencialismo de largo plazo y el deontológico convergen aquí, pero el de corto plazo los separa.</p>
+<p><strong>La tensión real:</strong> ¿Quién decide el orden de priorización — tú como proveedor con criterio técnico, o el cliente que compra por miedo? Si el cliente presiona por copilotos y agentes porque &quot;eso es lo que vio en el demo&quot;, y tú sabes que sin A y B eso fracasará, ¿tienes obligación de resistir esa demanda aunque pierda el deal?</p>
+<hr>
+<h4>Compensaciones</h4>
+<p>Aquí está el análisis estratégico con sus costos éticos explícitos:</p>
+<p><strong>Opción recomendada — Secuencia A → B → C → D (en ese orden de inversión):</strong></p>
+<p><strong>(A) Formación + gestión del cambio — PRIMERO, mayor inversión relativa ~35% del presupuesto de oferta)</strong><br>Es la única oferta que ataca directamente el cuello de botella confirmado. Sin esto, todo lo demás tiene tasa de adopción baja. Segmento inicial: <strong>corporativo mid-market</strong> (50-500 empleados), donde hay presupuesto pero la resistencia es más estructurada y medible. Lo que se sacrifica: ingresos más lentos en los primeros 3 meses, menor &quot;wow factor&quot; en demos, riesgo de que el cliente lo perciba como &quot;soft&quot; y no como IA real.</p>
+<p><strong>(B) Gobierno/seguridad/cumplimiento — SEGUNDO, ~25% del presupuesto de oferta)</strong><br>En LATAM, el riesgo regulatorio está creciendo (Brasil LGPD, Chile Ley de Datos, Colombia, sector financiero). Más importante: sin B, la oferta C y E son pasivos latentes para el cliente. Vender gobierno como &quot;habilitador de velocidad&quot; (no como freno) es el reencuadre correcto. Segmento prioritario: <strong>sector regulado</strong> (finanzas, salud, retail con datos de consumidor). Lo que se sacrifica: es la oferta más difícil de vender porque el cliente no la percibe como urgente hasta que tiene un incidente. Requiere educar antes de vender.</p>
+<p><strong>(C) Integración GenAI/copilotos para conocimiento — TERCERO, ~25%)</strong><br>Esta es la oferta de mayor demanda de mercado y la que genera casos de éxito visibles rápido (semanas a primer valor productivo). Pero su éxito depende de A ya instalado. Construida sobre A+B, tiene tasa de adopción sostenida real. Sin ellos, genera pilotos exitosos que mueren en escala. Segmento: <strong>corporativo y PYME tech-adjacent</strong>. Lo que se sacrifica: si se prioriza antes que A, se convierte en el clásico &quot;piloto exitoso, rollout fallido&quot; que destruye la relación.</p>
+<p><strong>(D) Analítica predictiva/optimización — CUARTO, ~15%)</strong><br>Tiene el ROI más demostrable (reducción de costos operativos, optimización de inventario, forecasting). Pero requiere datos limpios y usuarios que confíen en los outputs — ambas condiciones que A y F (que no priorizamos) deben haber trabajado. Segmento: <strong>operaciones industriales, retail, logística</strong>. Lo que se sacrifica: sin baseline de costos manuales del cliente (restricción confirmada), el caso de negocio es difícil de construir. Requiere que el cliente co-invierta en medición.</p>
+<p><strong>Lo que se descarta en este horizonte:</strong></p>
+<p>- <strong>(E) Automatización con agentes:</strong> Alta complejidad técnica, alto riesgo de fallo visible, requiere madurez organizacional que los clientes aún no tienen. Diferir a meses 12-18 no es cobardía — es secuenciación correcta. Lo que se sacrifica: el segmento early adopter que quiere agentes ahora se irá con otro proveedor. Ese es un costo real.</p>
+<p>- <strong>(F) MLOps/plataforma de datos:</strong> Es infraestructura, no servicio de adopción. Con madurez tech desconocida del cliente, construir esto primero es construir autopistas sin autos. Diferir o hacer como componente embebido en D.</p>
+<hr>
+<h4>Conclusión ética</h4>
+<p><mark class="tk-c">La tensión no se resuelve, se administra: <strong>el cliente compra por miedo a quedar atrás, pero lo que necesita para no quedar atrás es exactamente lo que menos quiere comprar</strong> — cambio cultural (A) y gobierno (B) antes que tecnología visible. Un proveedor que explota esa asimetría vendiendo primero C y E maximiza ingresos a 6 meses y destruye retención a 24. Un proveedor que impone A y B sin escuchar la urgencia del cliente pierde el deal a un competidor menos escrupuloso.</mark></p>
+<p>La posición defendible — no la cómoda — es esta: <strong>vender C como la promesa visible, pero contractualmente condicionar su implementación a un módulo mínimo de A y B</strong>. Eso no es manipulación; es coherencia entre lo que prometes y lo que puedes entregar. Lo que se sacrifica bajo esta posición es velocidad de cierre y algunos deals donde el cliente no acepta la condición. Eso es un costo ético que vale pagar, porque la alternativa es construir un portafolio de casos de éxito falsos que eventualmente colapsan — y en LATAM, donde el mercado de IA empresarial aún está formando su reputación colectiva, ese colapso tiene externalidades que van más allá de tu empresa.</p>
+      </div>
+    </article>
+    
+    </section>
+  </section>
+
+  <footer class="colophon">
+    <div>
+      <b>Henge v0.6</b><br>
+      classical MDS · cosine<br>
+      embed · openai/text-embedding-3-large
+    </div>
+    <div class="center">
+      «Consejeros alineados — el disenso suena pero el consenso aguanta.»
+    </div>
+    <div class="right">
+      <b>~USD 1.06</b><br>
+      2026·05·03 13:52 CLT<br>
+      reporte&nbsp;<b>#1352</b>
+    </div>
+  </footer>
+
+  </div>
+</main>
+
+<aside class="guide" id="guide" aria-label="Cómo leer este reporte">
+  <div class="guide-panel" role="dialog" aria-labelledby="guide-title">
+    <div class="guide-panel-body">
+      <p class="kicker">Guía de lectura</p>
+      <h3 id="guide-title">Cómo abordar <em>este reporte</em></h3>
+      <ol>
+        <li><b>Empieza por el consenso, no por el décimo.</b> Es lo que los 9 consejeros creen en común — el ancla de la decisión.</li>
+        <li><b>Los 9 consejeros no son votos.</b> Son lentes distintos sobre el mismo problema. Lee las diferencias entre ellos, no la mayoría.</li>
+        <li><b>El décimo es auditoría, no recomendación.</b> Su rol es atacar el consenso para probar si aguanta. Sonar convincente es su trabajo, no señal de que tenga razón.</li>
+        <li><b>Aísla los ataques del décimo, no su veredicto.</b> Quédate con las preguntas que abre y evalúa cada una contra tu realidad — descarta su conclusión si no resiste.</li>
+        <li><b>Mira las métricas.</b> Fragilidad alta + distancia 10º alta = consenso débil, el disenso pesa más. Fragilidad baja = consenso robusto, el disenso es retórico.</li>
+        <li><b>Aplica el test asimétrico.</b> Si el décimo nombra un riesgo que reconoces como real en tu vida, súmalo aunque no cambies de bando. Si no lo reconoces, descártalo.</li>
+        <li><b>Tú decides.</b> Ningún consejero conoce tu contexto completo. El reporte expone tensiones; la elección es tuya.</li>
+        <li><b>El meta-frame audita tu pregunta primero.</b> Si sugiere reformular, la corrida se corta antes de gastar en los 9 consejeros — lee la reformulación propuesta con cuidado, suele afilar la decisión real.</li>
+        <li><b>Los puntos del mapa se colorean por familia de modelo.</b> Azul = Anthropic, verde = OpenAI. Si la dispersión viene de una sola familia, la divergencia puede ser un artefacto de estilo y no un desacuerdo de fondo.</li>
+      </ol>
+    </div>
+    <div class="guide-panel-foot">
+      <p class="foot">El consenso protege contra el error obvio. El décimo protege contra el error compartido. Necesitas ambos lentes — y ninguno reemplaza tu juicio.</p>
+      <button type="button" class="guide-close" onclick="document.getElementById('guide').classList.remove('open')">Cerrar</button>
+    </div>
+  </div>
+  <button type="button" class="guide-toggle" onclick="document.getElementById('guide').classList.toggle('open')" aria-expanded="false">
+    <span class="marker"></span>
+    ¿Cómo leer esto?
+  </button>
+</aside>
+
+<script>
+  document.querySelectorAll('.frame').forEach(f => {
+    f.addEventListener('click', () => f.classList.toggle('open'));
+  });
+  (function(){
+    var g = document.getElementById('guide');
+    var btn = g.querySelector('.guide-toggle');
+    btn.addEventListener('click', function(){
+      btn.setAttribute('aria-expanded', g.classList.contains('open') ? 'true' : 'false');
+    });
+    document.addEventListener('keydown', function(e){
+      if(e.key === 'Escape' && g.classList.contains('open')){
+        g.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    });
+  })();
+
+  /* Theme toggle — cycles light <-> dark, persists to localStorage. */
+  (function(){
+    var btn = document.querySelector('.theme-toggle');
+    if (!btn) return;
+    btn.addEventListener('click', function(){
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('henge-theme', next); } catch (e) {}
+    });
+    /* Live-react to system changes only when user hasn't picked. */
+    if (window.matchMedia) {
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      var handler = function(e){
+        var stored = null;
+        try { stored = localStorage.getItem('henge-theme'); } catch(_){}
+        if (stored === 'light' || stored === 'dark') return;
+        document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+      };
+      if (mq.addEventListener) mq.addEventListener('change', handler);
+      else if (mq.addListener) mq.addListener(handler);
+    }
+  })();
+</script>
+</body>
+</html>

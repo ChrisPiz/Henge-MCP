@@ -22,7 +22,7 @@ alucinaciones del sintetizador las atrapa el auditor en lugar de que se
 laven dentro del consenso. La validación contra calidad de decisión
 (benchmark Henge-50) sigue pendiente.
 
-[Demo](https://chrispiz.github.io/Henge-MCP/demo.html) · [Paper](WHITEPAPER.md) ·
+[Demo](https://chrispiz.github.io/Henge-MCP/demo.es.html) · [Paper](WHITEPAPER.md) ·
 [Limits](LIMITS.md) · [Methodology](METHODOLOGY.md) · [CFI spec](docs/cfi-spec.md) ·
 [Manifesto](MANIFESTO.md) · [Developer](DEVELOPER.md)
 
