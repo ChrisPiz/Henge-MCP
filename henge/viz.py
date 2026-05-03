@@ -1571,6 +1571,13 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     margin-bottom: 28px;
   }}
   .sec-head .l{{ max-width: 64ch; }}
+  .sec-head-question{{ align-items: start; }}
+  .sec-head-question .l{{ flex: 0 0 auto; max-width: 38%; }}
+  .sec-head-question .r{{ flex: 1 1 auto; max-width: 62%; padding-top: 6px; }}
+  @media (max-width: 820px){{
+    .sec-head-question{{ flex-direction: column; }}
+    .sec-head-question .l, .sec-head-question .r{{ max-width: none; }}
+  }}
   .meta-card{{ margin: 0 0 24px; }}
   .sec-eyebrow{{
     display: inline-flex; align-items: center; gap: 8px;
@@ -1597,15 +1604,15 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     font-size: 16px; color: var(--storm); letter-spacing: -0.16px;
   }}
   .question-pull{{
-    margin: 20px 0 0;
+    margin: 0;
     padding: 6px 0 6px 22px;
     border-left: 3px solid var(--chartreuse);
     font-family: var(--serif);
     font-style: italic;
     font-weight: 400;
-    font-size: 24px;
-    line-height: 1.35;
-    letter-spacing: -0.22px;
+    font-size: 20px;
+    line-height: 1.4;
+    letter-spacing: -0.18px;
     color: var(--midnight-navy);
     text-wrap: balance;
     max-width: 64ch;
@@ -2626,10 +2633,12 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   <div class="page">
 
   <section class="section">
-    <div class="sec-head">
+    <div class="sec-head sec-head-question">
       <div class="l">
         <div class="sec-eyebrow"><span class="n">01</span>{t(locale, "section01_eyebrow_prefix")}{report_id}</div>
         <h2>{t(locale, "section01_h2_a")}<em>{t(locale, "section01_h2_em")}</em></h2>
+      </div>
+      <div class="r">
         <blockquote class="question-pull">{question_safe}</blockquote>
       </div>
     </div>
