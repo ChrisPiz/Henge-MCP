@@ -6,10 +6,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 from henge.agents import PROMPTS, PROMPTS_HASH, TEMPERATURE, TENTH_MAN, run_agents
 from henge.embed import project_mds
-from henge.pricing import (
-    HENGE_PRICING_VERSION,
-    anthropic_call_cost,
-    total_cost,
+from henge.providers.pricing import (
+    PRICING_VERSION,
+    build_cost_breakdown,
+    cost_for,
 )
 from henge.viz import compute_cfi
 
@@ -163,42 +163,58 @@ def test_prompts_hash_stable():
 
 
 def test_cost_breakdown_sums_components():
-    """``total_cost`` retorna la suma exacta de Anthropic + embeddings.
+    """``build_cost_breakdown`` retorna la suma exacta por bucket.
 
-    Regression contra v0.4 cost_usd hardcoded. cost_breakdown debe
-    derivarse de uso real, no de un literal.
+    Regression contra v0.4 cost_usd hardcoded. v0.6 cost_breakdown debe
+    derivarse de uso real (canonical ids), no de un literal. Legacy raw
+    SDK strings (e.g. ``claude-haiku-4-5-20251001``) deben ser
+    canonicalizados internamente.
     """
     advisor_usages = [
-        {"model": "claude-sonnet-4-6", "input_tokens": 1000, "output_tokens": 500},
-        {"model": "claude-sonnet-4-6", "input_tokens": 1200, "output_tokens": 600},
-        {"model": "claude-opus-4-7",   "input_tokens": 5000, "output_tokens": 2500},
+        {"model": "anthropic/sonnet-4-6", "input_tokens": 1000, "output_tokens": 500},
+        {"model": "anthropic/sonnet-4-6", "input_tokens": 1200, "output_tokens": 600},
+        {"model": "anthropic/opus-4-7",   "input_tokens": 5000, "output_tokens": 2500},
     ]
-    scoping = {"model": "claude-haiku-4-5-20251001", "input_tokens": 200, "output_tokens": 150}
+    scoping = {"model": "anthropic/haiku-4-5", "input_tokens": 200, "output_tokens": 150}
+    # Legacy raw SDK string — should be canonicalized internally.
     consensus = {"model": "claude-haiku-4-5-20251001", "input_tokens": 800, "output_tokens": 400}
 
     expected_anthropic = (
-        anthropic_call_cost(advisor_usages[0])
-        + anthropic_call_cost(advisor_usages[1])
-        + anthropic_call_cost(advisor_usages[2])
-        + anthropic_call_cost(scoping)
-        + anthropic_call_cost(consensus)
+        cost_for("anthropic/sonnet-4-6", 1000, 500)
+        + cost_for("anthropic/sonnet-4-6", 1200, 600)
+        + cost_for("anthropic/opus-4-7",   5000, 2500)
+        + cost_for("anthropic/haiku-4-5", 200, 150)
+        + cost_for("anthropic/haiku-4-5", 800, 400)
     )
 
-    breakdown = total_cost(
+    breakdown = build_cost_breakdown(
         advisor_usages=advisor_usages,
-        scoping_usage=scoping,
+        blind_usage=None,
+        informed_usage=None,
+        meta_usage=None,
+        canonical_usage=None,
+        scoping_haiku_usage=scoping,
+        scoping_adversarial_usage=None,
         consensus_usage=consensus,
-        embedding_model="text-embedding-3-small",
+        claims_extract_usage=None,
+        claims_verify_usage=None,
+        embedding_model="openai/text-embedding-3-large",
         embedding_input_tokens=2500,
     )
 
     assert abs(breakdown["anthropic_usd"] - round(expected_anthropic, 6)) < 1e-9
+    assert breakdown["openai_usd"] == 0.0  # no openai usages in this fixture
     assert breakdown["embedding_usd"] >= 0
     assert abs(
         breakdown["total_usd"]
-        - round(breakdown["anthropic_usd"] + breakdown["embedding_usd"], 6)
+        - round(
+            breakdown["anthropic_usd"]
+            + breakdown["openai_usd"]
+            + breakdown["embedding_usd"],
+            6,
+        )
     ) < 1e-9
-    assert breakdown["pricing_version"] == HENGE_PRICING_VERSION
+    assert breakdown["pricing_version"] == PRICING_VERSION
 
 
 def test_no_hardcoded_cost_in_logic():
@@ -220,7 +236,7 @@ def test_no_hardcoded_cost_in_logic():
     for pat in forbidden_patterns:
         assert pat not in text, (
             f"Regression: {pat!r} found in server.py. v0.5 derives cost from "
-            f"actual token usage via henge.pricing.total_cost()."
+            f"actual token usage via henge.providers.pricing.build_cost_breakdown()."
         )
 
 

@@ -14,7 +14,6 @@ from anthropic import AsyncAnthropic
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
-from . import pricing
 from .providers.pricing import build_cost_breakdown
 from .agents import (
     OPUS,
