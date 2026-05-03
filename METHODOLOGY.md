@@ -9,11 +9,14 @@ re-run a question and produce a CFI within numerical noise of the original.
 ## 1 · Prerequisites
 
 - Python ≥ 3.11
-- `ANTHROPIC_API_KEY` (required)
-- `OPENAI_API_KEY` (default embedding provider) **or** `VOYAGE_API_KEY` with
-  `EMBED_PROVIDER=voyage`
+- `ANTHROPIC_API_KEY` (required — Haiku 4.5, Sonnet 4.6, Opus 4.7)
+- `OPENAI_API_KEY` (required in v0.6 — gpt-5 powers 6/9 frames + adversarial
+  scoping + meta-frame audit + tenth-man informed + claim verification, plus
+  the default `text-embedding-3-large`)
+- Optional: `VOYAGE_API_KEY` with `EMBED_PROVIDER=voyage` (deprecation
+  candidate for v0.7)
 - Henge installed from the repo at a known SHA, or `henge-mcp==X.Y.Z` from
-  PyPI (planned v0.6+)
+  PyPI (planned)
 
 The simplest path: see the [Quickstart](README.md#quickstart) in the README.
 
@@ -21,15 +24,18 @@ The simplest path: see the [Quickstart](README.md#quickstart) in the README.
 
 A Henge run is reproducible **only** within this envelope:
 
-| Dimension                | Pinned in v0.5                                    |
-|--------------------------|---------------------------------------------------|
-| `temperature`            | `0` (see WHITEPAPER §4)                           |
-| Anthropic model versions | `claude-sonnet-4-6`, `claude-opus-4-7`, `claude-haiku-4-5-20251001` |
-| Embedding model          | `text-embedding-3-small` (default)                |
-| Prompt set               | identified by `prompts_hash` SHA-256 prefix       |
-| MDS init                 | `random_state=42`, `n_init=4` (viz only)          |
-| Henge release            | identified by `henge_version` field in report.json|
-| CFI spec                 | `cfi/2026-05-01` (see `docs/cfi-spec.md`)         |
+| Dimension                | Pinned in v0.6                                                                                  |
+|--------------------------|-------------------------------------------------------------------------------------------------|
+| `temperature`            | `0` (see WHITEPAPER §4 — Opus omits the parameter)                                              |
+| Anthropic models         | `claude-haiku-4-5`, `claude-sonnet-4-6`, `claude-opus-4-7`                                      |
+| OpenAI model             | `openai/gpt-5` (frames + audit roles)                                                           |
+| Frame routing            | 6× gpt-5 / 2× Sonnet 4.6 / 1× Opus 4.7 — see `henge/config/frame_assignment.py`                 |
+| Tenth-man split          | blind = Opus 4.7 · informed = gpt-5 (cross-lab)                                                 |
+| Embedding model          | `text-embedding-3-large` (default, OpenAI)                                                      |
+| Prompt set               | identified by `prompts_hash` SHA-256 prefix                                                     |
+| MDS init                 | `random_state=42`, `n_init=4` (viz only)                                                        |
+| Henge release            | identified by `henge_version` field in report.json                                              |
+| CFI spec                 | `cfi/2026-05-01` (unchanged from v0.5; see `docs/cfi-spec.md`)                                  |
 
 If any of these change between runs, the runs are not directly comparable.
 
@@ -46,23 +52,49 @@ Step 3 · Caller surfaces those to the user, collects answers, and re-calls:
    decide(question="…", context="…answers…")
 
 Step 4 · Henge runs in this exact order:
-   - 9 frames in parallel (asyncio.gather), Sonnet 4.6, temperature=0
-   - if 8/9 succeed → continue, else abort with structured error
-   - consensus synthesis from successful frames, Haiku 4.5, temperature=0
-   - tenth-man steel-man over the successful frames, Opus 4.7, temperature=0
-   - embed only the successful frames + tenth-man (NOT the failed stub texts)
-   - cosine distances to centroid of the n successful frames
-   - classical MDS for the 2-D scatter (visual only)
-   - compute CFI per docs/cfi-spec.md
-   - persist report.json + report.html under ~/.henge/reports/{id}/
-   - return summary JSON to caller
+   a. scoping (base) → Haiku 4.5
+   b. scoping (adversarial, cross-lab) → gpt-5 — adds 2-4 challenge questions
+   c. meta-frame audit (cross-lab) → gpt-5 — may short-circuit with
+      status="meta_early_exit" + suggested_reformulation
+   d. canonical context → Opus 4.7 — tightens scoping answers, flags
+      inconsistencies, fans out to all 9 advisors
+   e. 9 frames in parallel (asyncio.gather), routed:
+        empirical, first-principles, systemic, soft-contrarian,
+        radical-optimist, pre-mortem → gpt-5 (reasoning_effort="low")
+        analogical, ethical                                → Sonnet 4.6
+        historical                                          → Opus 4.7
+      All temperature=0; Opus omits the parameter.
+      If 8/9 succeed → continue, else abort with structured error.
+   f. consensus synthesis from successful frames → Haiku 4.5
+   g. tenth-man (blind) over the question + canonical context (NOT the
+      nine) → Opus 4.7
+   h. tenth-man (informed, cross-lab) over the nine + the blind → gpt-5;
+      returns structured what_holds / what_revised / what_discarded
+   i. claim extraction from consensus → Sonnet 4.6 (factual /
+      prescriptive / causal)
+   j. claim verification (cross-lab) → gpt-5; rates each claim
+      strong / moderate / weak / unsupported against the nine
+   k. embed only the successful frames + blind tenth-man (NOT the failed
+      stub texts, NOT the informed tenth-man) using
+      text-embedding-3-large
+   l. cosine distances to centroid of the n successful frames
+   m. classical MDS for the 2-D scatter (visual only)
+   n. compute CFI per docs/cfi-spec.md
+   o. persist report.json + report.html under ~/.henge/reports/{id}/
+   p. return summary JSON to caller
 
 Step 5 · Caller may inspect:
    - viz_path → HTML editorial report
    - json_path → canonical record
    - summary.cfi, summary.cfi_bin, summary.sigma_9, summary.mu_9
-   - cost_breakdown.{anthropic_usd, embedding_usd, total_usd, pricing_version}
-   - runtime.{henge_version, model_versions, prompts_hash, temperature}
+   - cost_breakdown.{anthropic_usd, openai_usd, embedding_usd,
+                     total_usd, pricing_version, by_phase}
+   - runtime.{henge_version, schema_version, model_versions,
+              prompts_hash, temperature}
+   - meta_frame.{decision_class, urgency, question_quality,
+                 meta_recommendation, reasoning, suggested_reformulation?}
+   - informed.{what_holds, what_revised, what_discarded}
+   - claims[].{text, type, support_strength, evidence_frames}
 ```
 
 ## 4 · Manual reproducibility check
@@ -98,9 +130,12 @@ report_a.cost_breakdown.pricing_version == report_b.cost_breakdown.pricing_versi
 If any field differs, you can still inspect the reports side by side, but
 treat the CFI comparison as cross-version, not cross-run.
 
-## 6 · Building a benchmark (v0.6, planned)
+## 6 · Building a benchmark (planned)
 
-Henge-50 will be a CSV of 50 historical decisions with known outcomes:
+Henge-50 was originally targeted for v0.6; v0.6 prioritised cross-lab
+routing and the dual tenth-man instead, so the benchmark slipped. It is
+still planned. The shape: a CSV of 50 historical decisions with known
+outcomes.
 
 ```
 id, year, question, context, ground_truth_outcome, source
@@ -108,7 +143,7 @@ id, year, question, context, ground_truth_outcome, source
 ...
 ```
 
-Validation is not part of v0.5.0. The methodology, when it lands, will be:
+Validation is not part of v0.6. The methodology, when it lands, will be:
 
 1. Run Henge over each row with `skip_scoping=True` (context is the
    pre-collected case description, no live scoping).

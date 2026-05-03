@@ -39,12 +39,12 @@ Add the same `mcpServers.henge` block to Cursor's MCP config (`Settings → MCP 
 ### Any environment
 
 ```bash
-git clone --single-branch --depth 1 https://github.com/ChrisPiz/Henge.git ~/Henge
+git clone --single-branch --depth 1 https://github.com/ChrisPiz/Henge-MCP.git ~/Henge
 cd ~/Henge
 cp .env.example .env
-# Open .env and fill in:
-#   ANTHROPIC_API_KEY  (required — runs the 9 frames + tenth-man)
-#   OPENAI_API_KEY     (embedding provider)
+# Open .env and fill in (both required in v0.6):
+#   ANTHROPIC_API_KEY  (Haiku 4.5 + Sonnet 4.6 + Opus 4.7)
+#   OPENAI_API_KEY     (gpt-5 frames + audit roles + text-embedding-3-large)
 
 ./setup                  # does Python detection, venv, pip install -e .,
                          # key validation, MCP registration, slash command
@@ -130,23 +130,45 @@ const phase2 = await mcp.tools.decide({
 
 ---
 
-## Output structure (v0.5.0)
+## Output structure (v0.6.0)
 
 ```jsonc
 {
-  "viz_path": "/Users/you/.henge/reports/20260501-2247_should-i-hire-now/report.html",
-  "report_id": "20260501-2247_should-i-hire-now",
-  "report_dir": "/Users/you/.henge/reports/20260501-2247_should-i-hire-now",
+  "viz_path": "/Users/you/.henge/reports/20260502-1430_should-i-hire-now/report.html",
+  "report_id": "20260502-1430_should-i-hire-now",
+  "report_dir": "/Users/you/.henge/reports/20260502-1430_should-i-hire-now",
   "consensus": "# Validate before hiring — asymmetric risk dominates\n\n## (1) Where the nine converge ...",
   "frames": [
-    { "frame": "empirical",        "status": "ok", "distance": 0.046, "summary": "..." },
-    { "frame": "first-principles", "status": "ok", "distance": 0.069, "summary": "..." }
-    // 7 more
+    { "frame": "empirical",        "status": "ok", "distance": 0.046, "model": "openai/gpt-5",          "summary": "..." },
+    { "frame": "first-principles", "status": "ok", "distance": 0.069, "model": "openai/gpt-5",          "summary": "..." },
+    { "frame": "analogical",       "status": "ok", "distance": 0.083, "model": "anthropic/sonnet-4-6",  "summary": "..." },
+    { "frame": "historical",       "status": "ok", "distance": 0.071, "model": "anthropic/opus-4-7",    "summary": "..." }
+    // 5 more
   ],
   "tenth_man": {
+    // blind: Opus 4.7, no view of the nine. Distance metric uses this.
     "distance": 0.148,
     "response": "## §1 Facts I accept\n... ## §2 Where the consensus fails ..."
   },
+  "informed": {
+    // gpt-5 cross-lab, sees nine + blind. Editorial, not metric.
+    "what_holds":     ["...", "..."],
+    "what_revised":   ["...", "..."],
+    "what_discarded": ["..."]
+  },
+  "meta_frame": {
+    "decision_class":      "two-way-with-cost",
+    "urgency":             "weeks",
+    "question_quality":    "well-formed",
+    "meta_recommendation": "proceed",
+    "reasoning":           "...",
+    "suggested_reformulation": null   // populated when status == "meta_early_exit"
+  },
+  "claims": [
+    { "text": "...", "type": "factual",      "support_strength": "strong",      "evidence_frames": ["empirical", "historical"] },
+    { "text": "...", "type": "prescriptive", "support_strength": "moderate",    "evidence_frames": ["first-principles"] },
+    { "text": "...", "type": "causal",       "support_strength": "unsupported", "evidence_frames": [] }
+  ],
   "summary": {
     // legacy (deprecated, kept until v1.0)
     "tenth_man_distance": 0.148,
@@ -155,34 +177,48 @@ const phase2 = await mcp.tools.decide({
     "consensus_fragility": "Advisors aligned — dissent sounds reasonable but consensus holds.",
     "n_frames_succeeded": 9,
     "embed_provider": "openai",
-    "embed_model": "text-embedding-3-small",
+    "embed_model": "text-embedding-3-large",
 
-    // v0.5 — Consensus Fragility Index, pre-registered in docs/cfi-spec.md
+    // CFI, pre-registered in docs/cfi-spec.md
     "cfi": 0.198,
     "cfi_bin": "aligned-stable",        // "aligned-stable" | "aligned-fragile" | "divided"
     "mu_9": 0.063,
     "sigma_9": 0.018,
-    "henge_version": "0.5.0",
+    "henge_version": "0.6.0",
+    "schema_version": "0.6",
     "prompts_hash": "3bb5924c03e4c761",
 
     // present only when k_runs > 1
     "k_runs_distribution": null
   },
   "cost_breakdown": {
-    "anthropic_usd": 0.4203,
-    "embedding_usd": 0.000050,
-    "total_usd":     0.420350,
-    "pricing_version": "2026-05-01"
+    "anthropic_usd":   0.5821,
+    "openai_usd":      0.6104,
+    "embedding_usd":   0.000110,
+    "total_usd":       1.192610,
+    "pricing_version": "2026-05",
+    "by_phase": {
+      "scoping":            0.0421,
+      "meta_frame":         0.0083,
+      "canonical_context":  0.1240,
+      "frames":             0.6492,
+      "consensus":          0.0185,
+      "tenth_man_blind":    0.1604,
+      "tenth_man_informed": 0.1011,
+      "claim_extract":      0.0250,
+      "claim_verify":       0.0639,
+      "embedding":          0.000110
+    }
   },
-  "cost_usd": 0.420350    // deprecated alias of cost_breakdown.total_usd, kept until v1.0
+  "cost_usd": 1.192610    // deprecated alias of cost_breakdown.total_usd, kept until v1.0
 }
 ```
 
-The persisted `report.json` adds `runtime` (model versions, temperature, prompts_hash) and `usage` (per-call token counts) blocks; see `henge/server.py` for the full payload shape. `schema_version` was bumped from `"1"` (v0.4) to `"2"` (v0.5).
+The persisted `report.json` adds `runtime` (model versions, temperature, prompts_hash) and `usage` (per-call token counts) blocks; see `henge/server.py` for the full payload shape. `schema_version` is `"0.6"` (was `"2"` in v0.5).
 
-The HTML at `viz_path` ships with the disagreement map, sortable frames table, consensus card, Tenth Man dissent (built via steel-manning), the new CFI/σ line under the verdict card, and a per-run hero painting bundled inside `report_dir/assets/`.
+The HTML at `viz_path` ships with the meta-frame audit card, the disagreement map (frame points coloured by lab — Anthropic blue / OpenAI green), the sortable frames table with model chips per row, the consensus card, the claim-verification panel, the Tenth Man split into **blind** + **informed** cards, takeaway markers (`mark.tk-c` green = conclusions / `mark.tk-a` cyan = actions) with a bottom-left toggle pill, and a per-run hero painting bundled inside `report_dir/assets/`.
 
-### K-runs mode (v0.5)
+### K-runs mode
 
 ```jsonc
 // call
@@ -198,7 +234,7 @@ The HTML at `viz_path` ships with the disagreement map, sortable frames table, c
   "cfi_ci95_half_width": 0.036,
   "cfi_samples": [0.198, 0.272, 0.183, 0.241, 0.176],
   "bin_distribution": { "aligned-stable": 5 },
-  "total_cost_usd": 2.08,
+  "total_cost_usd": 5.96,
   "errors": []
 }
 ```
@@ -213,9 +249,10 @@ Each run writes:
 
 ```
 ~/.henge/reports/
-  20260501-224712_should-i-hire-now/
+  20260502-143012_should-i-hire-now/
     report.html       # full editorial visualization
-    report.json       # canonical record (question, context, 10 responses, distances, summary)
+    report.json       # canonical record (question, context, 9 frames + blind tenth-man,
+                      #                   informed, meta_frame, claims, distances, summary)
     assets/
       header-v2.jpg   # bundled hero painting
   index.html          # auto-regenerated ledger of every past report
@@ -229,24 +266,37 @@ The JSON is the source of truth. The HTML is a pure render of it — delete a di
 
 ```
 henge/
-  agents.py        # 9 frames in parallel + tenth-man sequencing
-  embed.py         # provider-agnostic embeddings + classical MDS
-  scoping.py       # 4–7 clarifying questions (Haiku)
-  consensus.py     # synthesis of the nine (Haiku)
-  viz.py           # editorial HTML report + disagreement map SVG
-  storage.py       # report.json + report.html + ledger
-  server.py        # MCP entrypoint
-  prompts/         # 10 cognitive-frame markdowns
-  assets/          # bundled hero painting
+  agents.py            # 9 frames in parallel + blind tenth-man sequencing
+  claims.py            # claim extraction (Sonnet) + cross-lab verification (gpt-5)
+  consensus.py         # synthesis of the nine (Haiku)
+  embed.py             # provider-agnostic embeddings + classical MDS
+  meta_frame.py        # cross-lab question audit (gpt-5) + early-exit logic
+  scoping.py           # base scoping (Haiku) + adversarial sweep (gpt-5)
+                       # + canonical-context (Opus)
+  server.py            # MCP entrypoint
+  storage.py           # report.json + report.html + ledger
+  tenth_man.py         # blind (Opus) + informed (gpt-5) tenth-man
+  viz.py               # editorial HTML report + disagreement map SVG
+                       # + takeaway markers post-processor
+  config/
+    frame_assignment.py    # per-frame model routing
+  providers/             # canonical complete(canonical_id, req) interface
+    anthropic.py
+    openai.py
+    pricing.py           # build_cost_breakdown — replaces v0.5 pricing.py
+  prompts/             # cognitive-frame markdowns + audit prompts
+  assets/              # bundled hero painting
 ```
 
 ---
 
 ## Embeddings · provider config
 
-Henge needs to compute distance between the 10 advisor responses to draw the disagreement map, and that requires **embeddings** (text → vector). Anthropic does not currently offer an embeddings API, so a second provider is unavoidable for the math layer.
+In v0.6 OpenAI is load-bearing for the *generation* layer (gpt-5 powers 6/9 frames + adversarial scoping + meta-frame + tenth-man informed + claim verification), not just the math layer. Embeddings sit on top of the same key.
 
-**OpenAI `text-embedding-3-small`** — ~USD 0.0005/run. Most devs already have a key.
+**OpenAI `text-embedding-3-large`** (default) — ~USD 0.001/run, ~15-25% better Spanish recall than `-3-small`.
+
+**Voyage `voyage-3-large`** (opt-in via `EMBED_PROVIDER=voyage`) — deprecation candidate for v0.7 if no demand surfaces.
 
 A local-embeddings option (no API key, sentence-transformers on-device) is on the [Roadmap](README.md#roadmap).
 
