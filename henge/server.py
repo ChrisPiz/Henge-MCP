@@ -97,12 +97,12 @@ def _validate_keys_at_startup():
         try:
             from openai import OpenAI
             client = OpenAI()
-            # Probe gpt-5 access (1-token ping is cheap and confirms model availability)
-            client.chat.completions.create(
-                model="gpt-5",
-                messages=[{"role": "user", "content": "ping"}],
-                max_completion_tokens=1,
-            )
+            # Probe gpt-5 access via models.retrieve (zero tokens, confirms
+            # the key + the model is reachable on this account). A
+            # chat.completions ping doesn't work — gpt-5 is a reasoning
+            # model and burns the whole max_completion_tokens budget on
+            # internal chain-of-thought before producing visible output.
+            client.models.retrieve("gpt-5")
         except Exception as exc:
             errors.append(
                 f"OPENAI_API_KEY validación falló (gpt-5): {type(exc).__name__}: {exc}. "
