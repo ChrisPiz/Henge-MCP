@@ -110,6 +110,30 @@ Pricing version is recorded against the report (currently `2026-05-01`).
 
 ---
 
+## v0.6 cross-lab architecture
+
+v0.6 routes the 9 cognitive frames across two model families (Anthropic + OpenAI)
+and adds three cross-lab audit layers (adversarial scoping, meta-frame,
+tenth-man informed, claim verification). The split is intentional: synthesis
+tasks stay in Anthropic (consensus, canonical context, blind dissent); audit
+tasks cross to OpenAI (challenge the question, verify claims, refine the
+dissent). When the synthesizer hallucinates, the cross-lab auditor catches it.
+
+**Cost per `/decide` run:** USD ~1.00–1.50 (≈50% Anthropic / ≈50% OpenAI).
+
+**Required keys:**
+- `ANTHROPIC_API_KEY` (Haiku 4.5, Sonnet 4.6, Opus 4.7)
+- `OPENAI_API_KEY` (gpt-5 + text-embedding-3-large)
+
+### Migrating from v0.5
+
+Add `OPENAI_API_KEY` to `.env`. That's it. Everything else is automatic.
+The startup validator now pings gpt-5 and embeddings to confirm access; if
+your account doesn't have gpt-5, you'll see a clear error at boot instead
+of a 60s mystery failure during invocation.
+
+---
+
 ## Quickstart · Claude Code (30s)
 
 Paste this prompt into Claude Code and it self-installs by running a deterministic

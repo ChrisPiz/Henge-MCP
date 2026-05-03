@@ -60,13 +60,12 @@ mcp = FastMCP("henge")
 
 
 def _validate_keys_at_startup():
-    """Ping Anthropic + embed provider with a minimal call. Cost: ~USD 0.0001.
-
-    Auth failures here = clear error and exit. Auth failures during invocation
-    waste 60s and produce opaque stack traces.
+    """Ping Anthropic + OpenAI + (optional) Voyage with minimal calls.
+    Cost: ~USD 0.0002. Auth failures here = clear error and exit.
     """
     errors = []
 
+    # Anthropic — required
     if not os.getenv("ANTHROPIC_API_KEY"):
         errors.append(
             "ANTHROPIC_API_KEY no está en el environment. "
@@ -86,8 +85,43 @@ def _validate_keys_at_startup():
                 f"Verifica con `cat .env | grep ANTHROPIC`."
             )
 
-    provider = os.getenv("EMBED_PROVIDER", "openai").lower()
-    if provider == "voyage":
+    # OpenAI — required for v0.6 (gpt-5 frames + meta + informed + claim verification)
+    if not os.getenv("OPENAI_API_KEY"):
+        errors.append(
+            "OPENAI_API_KEY no está en el environment. "
+            "v0.6 lo necesita para gpt-5 (frames + meta-frame + tenth-man informed + "
+            "claim verification) además de embeddings. "
+            "Obtén una en https://platform.openai.com/api-keys"
+        )
+    else:
+        try:
+            from openai import OpenAI
+            client = OpenAI()
+            # Probe gpt-5 access (1-token ping is cheap and confirms model availability)
+            client.chat.completions.create(
+                model="gpt-5",
+                messages=[{"role": "user", "content": "ping"}],
+                max_completion_tokens=1,
+            )
+        except Exception as exc:
+            errors.append(
+                f"OPENAI_API_KEY validación falló (gpt-5): {type(exc).__name__}: {exc}. "
+                f"Si tu cuenta no tiene acceso a gpt-5, mira el README — v0.6 requiere acceso al modelo frontier."
+            )
+        else:
+            # Embedding probe (Phase 7 default = 3-large)
+            try:
+                client.embeddings.create(
+                    model="text-embedding-3-large",
+                    input=["ping"],
+                )
+            except Exception as exc:
+                errors.append(
+                    f"OPENAI_API_KEY validación falló (embeddings): {type(exc).__name__}: {exc}"
+                )
+
+    # Voyage — optional, only when EMBED_PROVIDER=voyage
+    if os.getenv("EMBED_PROVIDER", "openai").lower() == "voyage":
         if not os.getenv("VOYAGE_API_KEY"):
             errors.append(
                 "VOYAGE_API_KEY no está en el environment (configuraste EMBED_PROVIDER=voyage). "
@@ -101,24 +135,6 @@ def _validate_keys_at_startup():
             except Exception as exc:
                 errors.append(
                     f"VOYAGE_API_KEY validación falló: {type(exc).__name__}: {exc}"
-                )
-    else:
-        if not os.getenv("OPENAI_API_KEY"):
-            errors.append(
-                "OPENAI_API_KEY no está en el environment (provider default). "
-                "Obtén una en https://platform.openai.com/api-keys, "
-                "o configura EMBED_PROVIDER=voyage con VOYAGE_API_KEY."
-            )
-        else:
-            try:
-                from openai import OpenAI
-                OpenAI().embeddings.create(
-                    model="text-embedding-3-small",
-                    input=["ping"],
-                )
-            except Exception as exc:
-                errors.append(
-                    f"OPENAI_API_KEY validación falló: {type(exc).__name__}: {exc}"
                 )
 
     if errors:
