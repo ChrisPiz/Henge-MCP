@@ -1195,7 +1195,6 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     --ice-veil: #e0f6ff;
     --ghost-canvas: #f8f9fc;
     --pure: #ffffff;
-    --slate-ink: #6b7184;
     --ash: #7c8293;
     --storm: #596075;
     --fog: #b1b5c0;
@@ -1287,7 +1286,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   }}
   .mast-meta{{
     font-family: var(--mono); font-size: 12px;
-    color: var(--slate-ink); letter-spacing: 0.02em;
+    color: var(--storm); letter-spacing: 0.02em;
   }}
   .mast-meta b{{ color: var(--midnight-navy); font-weight: 500; }}
   .mast-meta .sep{{ color: var(--fog); margin: 0 8px; }}
@@ -1451,7 +1450,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   .sec-eyebrow{{
     display: inline-flex; align-items: center; gap: 8px;
     font-family: var(--mono); font-size: 12px;
-    color: var(--slate-ink);
+    color: var(--storm);
     text-transform: uppercase; letter-spacing: 0.04em;
     margin-bottom: 12px;
   }}
@@ -1511,9 +1510,9 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   }}
   .map-top .pill .d{{ width: 6px; height: 6px; border-radius: 9999px; background: var(--chartreuse); }}
   .map-top .meta{{
-    font-family: var(--mono); font-size: 12px; color: var(--slate-ink);
+    font-family: var(--mono); font-size: 12px; color: var(--storm);
   }}
-  .legend-row{{ display:flex; gap: 16px; align-items: center; font-size: 13px; color: var(--slate-ink); }}
+  .legend-row{{ display:flex; gap: 16px; align-items: center; font-size: 13px; color: var(--storm); }}
   .legend-row .ld{{
     display: inline-block; width: 9px; height: 9px;
     border-radius: 9999px; margin-right: 7px; transform: translateY(-1px);
@@ -1541,7 +1540,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   .map-foot .cell:last-child{{ border-right: 0; }}
   .map-foot .cell .lbl{{
     font-family: var(--mono); font-size: 11px;
-    color: var(--slate-ink); text-transform: uppercase;
+    color: var(--storm); text-transform: uppercase;
     letter-spacing: 0.04em; margin-bottom: 6px;
   }}
   .map-foot .cell .val{{
@@ -1560,7 +1559,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   }}
   .map-foot .cell .sub{{
     margin-top: 4px;
-    font-size: 13px; color: var(--slate-ink);
+    font-size: 13px; color: var(--storm);
   }}
 
   /* Consensus card (navy-themed) */
@@ -1609,7 +1608,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     padding: 14px 18px;
     box-shadow: var(--ring-rule);
     font-family: var(--mono); font-size: 11px;
-    color: var(--slate-ink);
+    color: var(--storm);
     text-transform: uppercase; letter-spacing: 0.04em;
   }}
   .consensus-d b{{
@@ -1640,7 +1639,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--slate-ink);
+    color: var(--storm);
     break-after: avoid;
   }}
   .consensus-body h2:not(:first-child),
@@ -1733,7 +1732,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     padding: 14px 18px;
     box-shadow: var(--ring-subtle);
     font-family: var(--mono); font-size: 11px;
-    color: var(--slate-ink);
+    color: var(--storm);
     text-transform: uppercase; letter-spacing: 0.04em;
   }}
   .tenth-d-stat b{{
@@ -1753,7 +1752,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     margin: 24px 0 8px;
     font-family: var(--mono); font-weight: 500;
     font-size: 11px; text-transform: uppercase;
-    letter-spacing: 0.04em; color: var(--slate-ink);
+    letter-spacing: 0.04em; color: var(--storm);
   }}
   .tenth-body h4:first-child{{ margin-top: 0; }}
   .tenth-body h4 .ord{{ color: var(--midnight-navy); margin-right: 8px; }}
@@ -1796,7 +1795,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   }}
   .mode .ord{{
     font-family: var(--mono); font-size: 11px;
-    color: var(--slate-ink);
+    color: var(--storm);
     text-transform: uppercase; letter-spacing: 0.04em;
   }}
   .mode h5{{
@@ -1817,7 +1816,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     background: var(--ghost-canvas);
     display: flex; justify-content: space-between;
     font-family: var(--mono); font-size: 12px;
-    color: var(--slate-ink);
+    color: var(--storm);
   }}
   .tenth-foot b{{ color: var(--midnight-navy); }}
 
@@ -1916,7 +1915,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     border-bottom: 1px solid var(--border-subtle);
     background: var(--ghost-canvas);
     font-family: var(--mono); font-size: 11px;
-    color: var(--slate-ink);
+    color: var(--storm);
     text-transform: uppercase; letter-spacing: 0.04em;
   }}
   .frame{{
@@ -1935,7 +1934,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     padding: 16px 24px;
   }}
   .f-idx{{
-    font-family: var(--mono); font-size: 12px; color: var(--slate-ink);
+    font-family: var(--mono); font-size: 12px; color: var(--storm);
   }}
   .f-name{{
     display: inline-flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
@@ -1982,7 +1981,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   }}
   .f-d b{{ font-weight: 500; }}
   .f-caret{{
-    color: var(--slate-ink);
+    color: var(--storm);
     font-family: var(--mono);
     transition: transform .15s ease;
     text-align: center;
@@ -2024,7 +2023,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     width: 28px; height: 28px;
     border-radius: 50%;
     background: var(--pure);
-    color: var(--slate-ink);
+    color: var(--storm);
     font-family: var(--serif);
     font-style: italic;
     font-size: 16px; font-weight: 500;
@@ -2054,7 +2053,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: var(--slate-ink);
+    color: var(--storm);
     font-weight: 500;
     margin: 0 0 10px;
   }}
@@ -2163,7 +2162,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     font-size: 10.5px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--slate-ink);
+    color: var(--storm);
     margin: 0 0 8px;
   }}
   .guide-panel h3{{
@@ -2198,7 +2197,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     left: 0; top: 12px;
     font-family: var(--mono);
     font-size: 10.5px;
-    color: var(--slate-ink);
+    color: var(--storm);
     letter-spacing: 0.06em;
   }}
   .guide-panel ol li b{{ color: var(--midnight-navy); font-weight: 600; }}
@@ -2213,7 +2212,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   .guide-close{{
     appearance: none; -webkit-appearance: none;
     background: none; border: 0; cursor: pointer;
-    color: var(--slate-ink);
+    color: var(--storm);
     font-family: var(--mono);
     font-size: 11px;
     letter-spacing: 0.06em;
@@ -2233,7 +2232,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     grid-template-columns: 1fr 1fr 1fr;
     gap: 24px;
     font-family: var(--mono); font-size: 12px;
-    color: var(--slate-ink);
+    color: var(--storm);
   }}
   footer.colophon b{{ color: var(--midnight-navy); font-weight: 500; }}
   footer.colophon .center{{ text-align: center; font-style: italic; font-family: var(--serif); }}
@@ -2249,7 +2248,6 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     --pure:          #14192a;
     --ice-veil:      #0d1734;
     --midnight-navy: #e6eefb;     /* primary text only */
-    --slate-ink:     #8a92a7;
     --ash:           #6b7184;
     --storm:         #b1b5c0;
     --fog:           #4a5168;
@@ -2309,7 +2307,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   [data-theme="dark"] .map-help[open] summary {{ background: #1b2540; color: var(--chartreuse); }}
   [data-theme="dark"] .map-help-popover           {{ background: var(--pure); }}
   [data-theme="dark"] .map-help-popover p         {{ color: var(--midnight-navy); }}
-  [data-theme="dark"] .map-help-popover .map-help-title {{ color: var(--slate-ink); }}
+  [data-theme="dark"] .map-help-popover .map-help-title {{ color: var(--storm); }}
 
   /* SVG ink overrides — split by element + attribute so fill="none"
      circles don't accidentally fill in. Order: more specific first. */
@@ -2318,11 +2316,11 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   [data-theme="dark"] .map-svg svg rect[fill="#1b2540"]              {{ fill: #1b2540; }}
   [data-theme="dark"] .map-svg svg rect[fill="none"][stroke="#1b2540"]   {{ stroke: rgba(255,255,255,0.36); }}
   [data-theme="dark"] .map-svg svg g[fill="#1b2540"]                 {{ fill: var(--midnight-navy); }}
-  [data-theme="dark"] .map-svg svg g[fill="#7c8293"]                 {{ fill: var(--slate-ink); }}
+  [data-theme="dark"] .map-svg svg g[fill="#7c8293"]                 {{ fill: var(--storm); }}
   [data-theme="dark"] .map-svg svg text[fill="#1b2540"]              {{ fill: var(--midnight-navy); }}
   [data-theme="dark"] .map-svg svg text[fill="#d0f100"]              {{ fill: var(--chartreuse); }}
   [data-theme="dark"] .map-svg svg text[fill="#6b7184"]              {{ fill: var(--storm); }}
-  [data-theme="dark"] .map-svg svg text[fill="#7c8293"]              {{ fill: var(--slate-ink); }}
+  [data-theme="dark"] .map-svg svg text[fill="#7c8293"]              {{ fill: var(--storm); }}
   [data-theme="dark"] .map-svg svg g[stroke="rgba(0,39,80,0.06)"]    {{ stroke: rgba(255,255,255,0.06); }}
   [data-theme="dark"] .map-svg svg g[stroke="rgba(0,39,80,0.10)"]    {{ stroke: rgba(255,255,255,0.10); }}
   [data-theme="dark"] .map-svg svg g[stroke="rgba(27,37,64,0.20)"]   {{ stroke: rgba(255,255,255,0.16); }}
