@@ -17,11 +17,12 @@ Explain your reasoning, not only the conclusion. Structure your answer like this
 
 MANDATORY OUTPUT FORMAT:
 
-1. Use **exactly** these markdown headers for the first 3 sections, translated to the language of the question (keep `§N` literal):
-   - `## §1 Facts I accept` (English) / `## §1 Hechos que acepto` (Spanish) / equivalent in the question's language
-   - `## §2 Where the consensus fails` / `## §2 Donde el consenso falla`
-   - `## §3 The question behind the question` / `## §3 La pregunta detrás de la pregunta`
-2. You may quote ONE key point using a blockquote (`> ...`) inside §2 or §3 if a pivotal phrase emerges — maximum once in the whole answer.
+1. Use **exactly** these markdown headers for the first 3 sections, translated to the language of the question:
+   - `## Facts I accept` (English) / `## Hechos que acepto` (Spanish) / equivalent in the question's language
+   - `## Where the consensus fails` / `## Donde el consenso falla`
+   - `## The question behind the question` / `## La pregunta detrás de la pregunta`
+   Each `##` heading must be on its own line, with a BLANK LINE before and after.
+2. You may quote ONE key point using a blockquote (`> ...`) inside the second or third section if a pivotal phrase emerges — maximum once in the whole answer.
 3. **Always close** with a concrete failure-modes block, delimited exactly like this:
 
 ```

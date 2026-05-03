@@ -7,7 +7,7 @@ Design language (v3):
   shadow rings (no borders)
 - Single chartreuse (#d0f100) accent — used only on the tenth-man and primary
   affordances; nine-advisor consensus sits in midnight-navy
-- Type pairing: Fraunces (serif display + numerics) + DM Sans (UI) +
+- Type pairing: Fraunces (serif display + numerics) + Source Sans Pro (UI) +
   JetBrains Mono (data, labels, meta)
 
 Layout: masthead → hero (painting + 4 stats) → 01 Report (question + map +
@@ -21,6 +21,8 @@ import math
 import os
 import re
 from datetime import datetime
+
+from henge.config.frame_assignment import FRAME_MODEL_MAP
 
 
 # ───────── Locale ─────────
@@ -112,6 +114,7 @@ TRANSLATIONS = {
         "masthead_report": "Report",
         "masthead_index_btn": "Past reports",
         "masthead_index_aria": "View past reports",
+        "theme_toggle_aria": "Toggle theme",
         "hero_h_a": "Nine advisors aligned.",
         "hero_h_b": "The tenth must dissent.",
         "hero_dek": "Your question runs through nine cognitive frames. We measure the consensus and force a tenth to disagree with rigor.",
@@ -167,10 +170,17 @@ TRANSLATIONS = {
         "frames_head_idx": "Idx",
         "frames_head_frame": "Frame",
         "frames_head_status": "Status",
+        "frames_head_lean": "Lean",
         "frames_head_distance": "Distance",
         "frames_head_d": "d",
         "flag_closest": "closest",
         "flag_farthest": "farthest",
+        "hero_quote_nine_mark": "&#x03A3; &middot; The Nine",
+        "hero_quote_tenth_mark_ord": "10",
+        "hero_quote_tenth_mark_label": "The Tenth",
+        "hero_quote_consensus_cite": "consensus",
+        "hero_quote_tenth_cite": "forced dissent",
+        "hero_verdict_consensus": "consensus",
         "svg_centroid": "CENTROID",
         "svg_steelman": "steel-man dissent",
         "guide_kicker": "Reading guide",
@@ -186,6 +196,8 @@ TRANSLATIONS = {
         "guide_rule_5": "<b>Read the metrics.</b> High fragility + high tenth-man distance = weak consensus, dissent matters more. Low fragility = robust consensus, dissent is rhetorical.",
         "guide_rule_6": "<b>Apply the asymmetric test.</b> If the tenth names a risk you recognize as real in your life, add it even if you don't switch sides. If you don't recognize it, discard.",
         "guide_rule_7": "<b>You decide.</b> No advisor knows your full context. The report exposes tensions; the choice is yours.",
+        "guide_rule_8": "<b>The meta-frame audits your question first.</b> If it suggests reformulating, the run short-circuits before the 9 advisors fire — read the suggested rewrite carefully, it usually sharpens the actual decision.",
+        "guide_rule_9": "<b>Map points are coloured by model family.</b> Blue = Anthropic, green = OpenAI. If the dispersion comes from one family alone, the disagreement may be a model-style artefact more than a true disagreement on the substance.",
         "guide_foot": "Consensus protects against the obvious error. The tenth protects against the shared one. You need both lenses — and neither replaces your judgment.",
         "colophon_tagline": "Nine voices aligned aren't signal — just coherent noise.",
     },
@@ -195,6 +207,7 @@ TRANSLATIONS = {
         "masthead_report": "Reporte",
         "masthead_index_btn": "Reportes anteriores",
         "masthead_index_aria": "Ver reportes anteriores",
+        "theme_toggle_aria": "Cambiar tema",
         "hero_h_a": "Nueve consejeros alineados.",
         "hero_h_b": "El décimo debe disentir.",
         "hero_dek": "Tu pregunta corre por nueve marcos cognitivos. Medimos el consenso y obligamos a un décimo a discrepar con rigor.",
@@ -250,10 +263,17 @@ TRANSLATIONS = {
         "frames_head_idx": "Idx",
         "frames_head_frame": "Marco",
         "frames_head_status": "Estado",
+        "frames_head_lean": "Veredicto",
         "frames_head_distance": "Distancia",
         "frames_head_d": "d",
         "flag_closest": "más cercano",
         "flag_farthest": "más lejano",
+        "hero_quote_nine_mark": "&#x03A3; &middot; Los Nueve",
+        "hero_quote_tenth_mark_ord": "10",
+        "hero_quote_tenth_mark_label": "El D&eacute;cimo",
+        "hero_quote_consensus_cite": "consenso",
+        "hero_quote_tenth_cite": "disenso obligado",
+        "hero_verdict_consensus": "consenso",
         "svg_centroid": "CENTROIDE",
         "svg_steelman": "disenso steel-man",
         "guide_kicker": "Guía de lectura",
@@ -269,6 +289,8 @@ TRANSLATIONS = {
         "guide_rule_5": "<b>Mira las métricas.</b> Fragilidad alta + distancia 10º alta = consenso débil, el disenso pesa más. Fragilidad baja = consenso robusto, el disenso es retórico.",
         "guide_rule_6": "<b>Aplica el test asimétrico.</b> Si el décimo nombra un riesgo que reconoces como real en tu vida, súmalo aunque no cambies de bando. Si no lo reconoces, descártalo.",
         "guide_rule_7": "<b>Tú decides.</b> Ningún consejero conoce tu contexto completo. El reporte expone tensiones; la elección es tuya.",
+        "guide_rule_8": "<b>El meta-frame audita tu pregunta primero.</b> Si sugiere reformular, la corrida se corta antes de gastar en los 9 consejeros — lee la reformulación propuesta con cuidado, suele afilar la decisión real.",
+        "guide_rule_9": "<b>Los puntos del mapa se colorean por familia de modelo.</b> Azul = Anthropic, verde = OpenAI. Si la dispersión viene de una sola familia, la divergencia puede ser un artefacto de estilo y no un desacuerdo de fondo.",
         "guide_foot": "El consenso protege contra el error obvio. El décimo protege contra el error compartido. Necesitas ambos lentes — y ninguno reemplaza tu juicio.",
         "colophon_tagline": "Nueve voces alineadas no son señal — son ruido coherente.",
     },
@@ -404,7 +426,374 @@ def _md_to_html(text: str) -> str:
             b = re.sub(r"(?<!\*)\*(?!\s)(.+?)(?<!\s)\*(?!\*)", r"<em>\1</em>", b)
             b = b.replace("\n", "<br>")
             out.append(f"<p>{b}</p>")
-    return "\n".join(out)
+    rendered = "\n".join(out)
+    return _apply_takeaway_markers(rendered)
+
+
+# Headings that signal "what follows is a conclusion" — first paragraph after
+# any of these gets a tk-c marker (qué creer).
+_TK_CONCLUSION_PATTERN = (
+    r"\b(?:conclusi[oó]n|inclinaci[oó]n\s+neta|recomendaci[oó]n|veredicto|"
+    r"resumen\s+ejecutivo|s[ií]ntesis|takeaway|bottom\s+line|"
+    r"conclusion|lean|verdict|recommendation|executive\s+summary)\b"
+)
+_TK_CONCLUSION_HEADINGS = re.compile(_TK_CONCLUSION_PATTERN, re.IGNORECASE)
+
+# Imperative/decision openers — bullet lines and strongs starting with these
+# get a tk-a marker (qué hacer).
+_TK_ACTION_OPENERS = re.compile(
+    r"^(?:prioriza\w*|asigna\w*|empaqueta\w*|posponga?|posponer|"
+    r"resista?|resistir|embebe\w*|embeber|decisi[oó]n|orden\s+de|"
+    r"segmento|asignaci[oó]n|secuencia|paquete\s+\d|oferta\s+\d|"
+    r"prioridad\s+\d|de[‑\-]priorizar|deprioriz\w*|"
+    r"prioritize|allocate|bundle|postpone|resist|embed|decide|"
+    r"sequence|package\s+\d|offer\s+\d|priority\s+\d|deprioritize)",
+    re.IGNORECASE,
+)
+
+
+def _apply_takeaway_markers(html: str) -> str:
+    """Heuristic post-processor: wrap conclusion/action passages with <mark>.
+
+    Conservative rules:
+    - First <p> after a heading matching _TK_CONCLUSION_HEADINGS → tk-c.
+    - Bullet lines (split by <br>) inside <p> that start with "- " followed by
+      an imperative opener → wrap that line with tk-a.
+    - <strong> opening with an imperative opener → wrap the strong with tk-a.
+
+    Idempotent: skips passages that already contain a tk- marker.
+    """
+    # Rule 1: first <p> after conclusion-style heading → tk-c
+    def _wrap_after_heading(match: re.Match) -> str:
+        head, gap, p_open, p_inner, p_close = match.group(1, 2, 3, 4, 5)
+        if "tk-" in p_inner or not p_inner.strip():
+            return match.group(0)
+        return f"{head}{gap}{p_open}<mark class=\"tk-c\">{p_inner}</mark>{p_close}"
+
+    pattern_heading = re.compile(
+        r"(<h[234][^>]*>[^<]*?(?:" + _TK_CONCLUSION_PATTERN + r")[^<]*?</h[234]>)"
+        r"(\s*)"
+        r"(<p[^>]*>)(.+?)(</p>)",
+        re.IGNORECASE | re.DOTALL,
+    )
+    html = pattern_heading.sub(_wrap_after_heading, html)
+
+    # Rule 2: <strong> opening with action verb → wrap whole strong (run first
+    # so Rule 3 sees the marker and skips the surrounding line).
+    def _wrap_strong(s_match: re.Match) -> str:
+        inner = s_match.group(1)
+        if _TK_ACTION_OPENERS.match(inner.strip()):
+            return f"<mark class=\"tk-a\"><strong>{inner}</strong></mark>"
+        return s_match.group(0)
+
+    html = re.sub(r"<strong>(.+?)</strong>", _wrap_strong, html)
+
+    # Rule 3: bullet lines inside <p> separated by <br> starting with action verbs
+    def _wrap_action_lines(p_match: re.Match) -> str:
+        p_open, inner, p_close = p_match.group(1, 2, 3)
+        lines = inner.split("<br>")
+        wrapped = []
+        for line in lines:
+            if "tk-" in line:
+                wrapped.append(line)
+                continue
+            stripped = line.lstrip()
+            test = re.sub(r"^[-•·]\s*(<strong>)?", "", stripped)
+            test = re.sub(r"^<strong>", "", test)
+            if _TK_ACTION_OPENERS.match(test):
+                wrapped.append(f"<mark class=\"tk-a\">{line}</mark>")
+            else:
+                wrapped.append(line)
+        return f"{p_open}{'<br>'.join(wrapped)}{p_close}"
+
+    html = re.sub(
+        r"(<p[^>]*>)(.+?)(</p>)",
+        _wrap_action_lines,
+        html,
+        flags=re.DOTALL,
+    )
+
+    return html
+
+
+# Per-axis labels + one-line value glosses for the meta-frame card.
+# The raw enums (e.g. "two-way-with-cost") are accurate but opaque; the gloss
+# turns each into a sentence the reader actually understands.
+_META_AXIS_LABELS = {
+    "es": {
+        "decision_class":      "Reversibilidad",
+        "urgency":             "Urgencia",
+        "question_quality":    "Calidad de pregunta",
+        "meta_recommendation": "Recomendación",
+    },
+    "en": {
+        "decision_class":      "Reversibility",
+        "urgency":             "Urgency",
+        "question_quality":    "Question quality",
+        "meta_recommendation": "Recommendation",
+    },
+}
+
+_META_VALUE_GLOSS = {
+    "es": {
+        # decision_class
+        "reversible":         ("Reversible", "Se puede deshacer en <30 días con costo bajo (<10%)."),
+        "two-way-with-cost":  ("Reversible con costo", "Se deshace, pero toma meses y capital significativo."),
+        "one-way-door":       ("Puerta de un solo sentido", "Efectivamente irreversible — no hay vuelta atrás."),
+        # urgency
+        "now":                ("Ahora", "Daño material en días si no se decide."),
+        "weeks":              ("Semanas", "Cambio de estado relevante en semanas."),
+        "months":             ("Meses", "Hay margen de meses antes de forzar la mano."),
+        "fake-urgency":       ("Urgencia falsa", "La urgencia es percibida; la situación no la justifica."),
+        # question_quality
+        "well-formed":        ("Bien formada", "Decisión binaria/N-ária con stakes y criterios claros."),
+        "proxy-for-other-question":          ("Proxy de otra", "Es una pregunta-pantalla; la real está debajo."),
+        "exploration-disguised-as-decision": ("Exploración disfrazada", "Aún se está aprendiendo, no decidiendo."),
+        # meta_recommendation
+        "proceed":               ("Procede", "Los 9 advisors corren tal como está."),
+        "reformulate":           ("Reformular", "Hay una versión más afilada — léela y vuelve."),
+        "postpone":              ("Postergar", "Falta info que se puede conseguir barata antes de decidir."),
+        "this-is-not-a-decision": ("No es decisión", "Es una pregunta de exploración/explicación, no de commit."),
+        "unknown":            ("?", "Sin clasificación."),
+    },
+    "en": {
+        "reversible":         ("Reversible", "Undoable within 30 days at <10% of the cost."),
+        "two-way-with-cost":  ("Reversible w/ cost", "Reversible but takes months and meaningful capital."),
+        "one-way-door":       ("One-way door", "Effectively irreversible — no take-backs."),
+        "now":                ("Now", "Material harm within days if not decided."),
+        "weeks":              ("Weeks", "Meaningful state change in weeks."),
+        "months":             ("Months", "Months of runway before being forced."),
+        "fake-urgency":       ("Fake urgency", "User-felt; the situation does not actually warrant it."),
+        "well-formed":        ("Well-formed", "Binary/N-ary decision with clear stakes and criteria."),
+        "proxy-for-other-question":          ("Proxy for another", "Stand-in for a deeper unspoken question."),
+        "exploration-disguised-as-decision": ("Exploration in disguise", "Still gathering information, not deciding."),
+        "proceed":               ("Proceed", "The 9 advisors should run as-is."),
+        "reformulate":           ("Reformulate", "A sharper version exists — read it and come back."),
+        "postpone":              ("Postpone", "Missing info that can be gathered cheaply first."),
+        "this-is-not-a-decision": ("Not a decision", "Asks for explanation/exploration, not a commit."),
+        "unknown":            ("?", "Unclassified."),
+    },
+}
+
+# Tone class per recommendation — used to color the recommendation cell.
+_REC_TONE = {
+    "proceed":               "ok",
+    "reformulate":           "warn",
+    "postpone":              "warn",
+    "this-is-not-a-decision": "stop",
+}
+
+
+def _meta_card_html(meta_dict, locale: str = "es") -> str:
+    """Render the meta-frame audit card. ``meta_dict`` may be None (legacy reports)."""
+    if not meta_dict:
+        return ""
+    decision = str(meta_dict.get("decision_class", "unknown"))
+    urgency  = str(meta_dict.get("urgency", "unknown"))
+    quality  = str(meta_dict.get("question_quality", "unknown"))
+    rec      = str(meta_dict.get("meta_recommendation", "proceed"))
+    reasoning = (meta_dict.get("reasoning") or "").strip()
+
+    axis = _META_AXIS_LABELS.get(locale, _META_AXIS_LABELS["en"])
+    gloss = _META_VALUE_GLOSS.get(locale, _META_VALUE_GLOSS["en"])
+
+    def _cell(axis_key: str, value: str, tone: str = "") -> str:
+        label, hint = gloss.get(value, gloss.get("unknown", ("?", "")))
+        return (
+            f'<div class="meta-cell meta-cell-{html_mod.escape(tone)}">'
+            f'  <div class="meta-cell-axis">{html_mod.escape(axis[axis_key])}</div>'
+            f'  <div class="meta-cell-value">{html_mod.escape(label)}</div>'
+            f'  <div class="meta-cell-hint">{html_mod.escape(hint)}</div>'
+            f'</div>'
+        )
+
+    title = "Auditoría de la pregunta" if locale == "es" else "Question audit"
+    rec_tone = _REC_TONE.get(rec, "")
+
+    return (
+        f'<section class="meta-card">'
+        f'  <h3>{html_mod.escape(title)}</h3>'
+        f'  <div class="meta-body">'
+        f'    <div class="meta-grid">'
+        f'      {_cell("decision_class", decision)}'
+        f'      {_cell("urgency", urgency)}'
+        f'      {_cell("question_quality", quality)}'
+        f'      {_cell("meta_recommendation", rec, tone=rec_tone)}'
+        f'    </div>'
+        f'    <div class="meta-reasoning">{_md_to_html(reasoning)}</div>'
+        f'  </div>'
+        f'</section>'
+    )
+
+
+def _informed_card_html(informed_dict, locale: str = "es") -> str:
+    """Render the gpt-5 informed reconciliation card (Phase 5 dual tenth-man).
+
+    Sits below the blind tenth-card. Shows what holds, what got revised, what
+    was discarded as Opus bias. ``informed_dict`` may be None on legacy reports.
+    """
+    if not informed_dict:
+        return ""
+    text = (informed_dict.get("text") or "").strip()
+    holds = informed_dict.get("what_holds") or []
+    revised = informed_dict.get("what_revised") or []
+    discarded = informed_dict.get("what_discarded") or []
+
+    if not (text or holds or revised or discarded):
+        return ""
+
+    title = "Disenso refinado (cross-lab)" if locale == "es" else "Refined dissent (cross-lab)"
+    holds_label = "Lo que se sostiene" if locale == "es" else "What holds"
+    revised_label = "Lo que se revisa" if locale == "es" else "What gets revised"
+    discarded_label = "Lo que se descarta" if locale == "es" else "What was lab bias"
+    sub = (
+        "gpt-5 audita el disenso ciego de Opus contra los 9 marcos."
+        if locale == "es"
+        else "gpt-5 audits Opus's blind dissent against the 9 advisors."
+    )
+
+    def _list_html(items, css_class):
+        if not items:
+            return ""
+        lis = "".join(f"<li>{html_mod.escape(str(item))}</li>" for item in items)
+        return f'<ul class="informed-list {css_class}">{lis}</ul>'
+
+    text_html = _md_to_html(text) if text else ""
+
+    return (
+        '<article class="informed-card" id="informed">'
+        f'  <header class="informed-top">'
+        f'    <div class="informed-tag">cross-lab</div>'
+        f'    <h3>{html_mod.escape(title)}</h3>'
+        f'    <p class="informed-sub">{html_mod.escape(sub)}</p>'
+        f'  </header>'
+        f'  <div class="informed-body">'
+        f'    {text_html}'
+        f'    <div class="informed-grid">'
+        f'      <div class="informed-col">'
+        f'        <div class="ord">§ 01</div>'
+        f'        <h5>{html_mod.escape(holds_label)}</h5>'
+        f'        {_list_html(holds, "holds")}'
+        f'      </div>'
+        f'      <div class="informed-col">'
+        f'        <div class="ord">§ 02</div>'
+        f'        <h5>{html_mod.escape(revised_label)}</h5>'
+        f'        {_list_html(revised, "revised")}'
+        f'      </div>'
+        f'      <div class="informed-col">'
+        f'        <div class="ord">§ 03</div>'
+        f'        <h5>{html_mod.escape(discarded_label)}</h5>'
+        f'        {_list_html(discarded, "discarded")}'
+        f'      </div>'
+        f'    </div>'
+        f'  </div>'
+        f'</article>'
+    )
+
+
+def _claims_panel_html(claims_list, locale: str = "es") -> str:
+    """Render the Claims+support panel after the consensus.
+
+    ``claims_list`` is a list of dicts with claim_text, claim_type,
+    supporting_frames, contesting_frames, support_strength. May be None
+    (legacy reports) — returns "" in that case.
+    """
+    if not claims_list:
+        return ""
+
+    title = "Claims del consensus + soporte" if locale == "es" else "Consensus claims + support"
+    sub = (
+        "Sonnet extrae proposiciones falsables del consensus; gpt-5 cross-lab verifica cada una contra los 9."
+        if locale == "es"
+        else "Sonnet extracts falsifiable claims from the consensus; gpt-5 cross-lab verifies each against the 9."
+    )
+
+    sup_label = "Sostienen" if locale == "es" else "Support"
+    con_label = "Contradicen" if locale == "es" else "Contest"
+    none_label = "—"
+
+    strength_label = {
+        "strong":      ("alto", "strong") if locale == "es" else ("strong", "strong"),
+        "moderate":    ("moderado", "moderate") if locale == "es" else ("moderate", "moderate"),
+        "weak":        ("débil", "weak") if locale == "es" else ("weak", "weak"),
+        "unsupported": ("sin soporte", "unsupported") if locale == "es" else ("unsupported", "unsupported"),
+    }
+    type_label = {
+        "factual":      "factual",
+        "prescriptive": "prescriptiva" if locale == "es" else "prescriptive",
+        "causal":       "causal",
+        "unknown":      "?",
+    }
+
+    # 9 advisors in canonical order — used for the support strip
+    from henge.config.frame_assignment import FRAME_MODEL_MAP
+    canonical_frames = list(FRAME_MODEL_MAP.keys())
+    frame_short = {  # 3-letter abbreviation for tiny dot label
+        "empirical":        "EMP",
+        "historical":       "HIS",
+        "first-principles": "1ST",
+        "analogical":       "ANA",
+        "systemic":         "SYS",
+        "ethical":          "ETH",
+        "soft-contrarian":  "CON",
+        "radical-optimist": "OPT",
+        "pre-mortem":       "PRE",
+    }
+
+    def _normalize(name: str) -> str:
+        # Server may emit "empirical" or "Advisor 1 — empirical" — normalize.
+        n = str(name).strip().lower()
+        if "—" in n:
+            n = n.split("—", 1)[1].strip()
+        return n
+
+    items_html = []
+    for c in claims_list:
+        text = html_mod.escape(str(c.get("claim_text", "")).strip())
+        ctype = c.get("claim_type", "unknown")
+        strength = c.get("support_strength", "unsupported")
+        s_text, s_class = strength_label.get(strength, ("?", "unsupported"))
+        sup = {_normalize(x) for x in (c.get("supporting_frames") or [])}
+        con = {_normalize(x) for x in (c.get("contesting_frames") or [])}
+        sup_n = sum(1 for f in canonical_frames if f in sup)
+
+        # Build the 9-dot support strip
+        dots = []
+        for f in canonical_frames:
+            if f in con:
+                state = "contest"
+            elif f in sup:
+                state = "support"
+            else:
+                state = "neutral"
+            dots.append(
+                f'<span class="claim-dot claim-dot-{state}" title="{html_mod.escape(f)}">'
+                f'{frame_short.get(f, "?")}</span>'
+            )
+        strip_html = f'<div class="claim-strip">{"".join(dots)}</div>'
+
+        items_html.append(
+            f'<article class="claim-card claim-{html_mod.escape(s_class)}">'
+            f'<header class="claim-head">'
+            f'<span class="claim-type">{html_mod.escape(type_label.get(ctype, "?"))}</span>'
+            f'<span class="claim-strength claim-strength-{html_mod.escape(s_class)}">'
+            f'{sup_n}/9 · {html_mod.escape(s_text)}'
+            f'</span>'
+            f'</header>'
+            f'<p class="claim-text">{text}</p>'
+            f'{strip_html}'
+            f'</article>'
+        )
+
+    return (
+        '<section class="claims-panel">'
+        f'  <header class="claims-head">'
+        f'    <h3>{html_mod.escape(title)}</h3>'
+        f'    <p class="claims-sub">{html_mod.escape(sub)}</p>'
+        f'  </header>'
+        f'  <div class="claims-grid">{"".join(items_html)}</div>'
+        '</section>'
+    )
 
 
 def _split_consensus_title(text: str):
@@ -489,12 +878,88 @@ def _extract_conclusion(text: str, max_chars: int = 360) -> str:
     return last
 
 
+_LEAN_MARKERS = re.compile(
+    r"\*\*\s*(?:Conclusion|Conclusi[oó]n|Net lean|Lean|Bottom line|Veredicto|Net)\s*[:\.]?\s*\*\*\s*[:\.]?\s*",
+    re.IGNORECASE,
+)
+
+
+def _extract_lean(text: str, max_chars: int = 90) -> str:
+    """One-liner verdict for the frames-table Lean column.
+
+    Heuristic: prefer the sentence after a ``**Conclusion:**`` / ``**Net lean:**``
+    marker (the prompts close with these). Fall back to the first sentence of
+    the last paragraph. Strip markdown emphasis, collapse whitespace, truncate at
+    a sentence boundary close to ``max_chars`` so the row stays one line.
+    """
+    if not text:
+        return ""
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text.strip()) if p.strip()]
+    if not paragraphs:
+        return ""
+
+    candidate = ""
+    for para in reversed(paragraphs):
+        m = _LEAN_MARKERS.search(para)
+        if m:
+            candidate = para[m.end():].strip()
+            break
+    if not candidate:
+        candidate = paragraphs[-1]
+
+    # Take the first sentence
+    sentence_end = re.search(r"[.!?](?:\s|$)", candidate)
+    if sentence_end:
+        candidate = candidate[: sentence_end.end()].strip()
+
+    # Strip markdown emphasis ** / __ / * / _
+    candidate = re.sub(r"\*\*(.+?)\*\*", r"\1", candidate)
+    candidate = re.sub(r"__(.+?)__", r"\1", candidate)
+    candidate = re.sub(r"(?<!\*)\*(?!\*)([^*]+)\*(?!\*)", r"\1", candidate)
+    candidate = re.sub(r"(?<!_)_(?!_)([^_]+)_(?!_)", r"\1", candidate)
+    candidate = re.sub(r"\s+", " ", candidate).strip()
+
+    if len(candidate) > max_chars:
+        truncated = candidate[:max_chars]
+        # Prefer cutting at the last sentence-end or comma in the truncation window
+        cut = max(truncated.rfind("."), truncated.rfind(","), truncated.rfind(";"))
+        if cut > max_chars * 0.6:
+            candidate = truncated[: cut + 1].rstrip(",;") + ("" if truncated[cut] == "." else "&hellip;")
+        else:
+            candidate = truncated.rsplit(" ", 1)[0] + "&hellip;"
+    return candidate
+
+
 def _stddev(values):
     """Population standard deviation. Returns 0.0 for empty / single-element input."""
     if not values or len(values) < 2:
         return 0.0
     mean = sum(values) / len(values)
     return math.sqrt(sum((v - mean) ** 2 for v in values) / len(values))
+
+
+# ───────── Phase 9: family colors ─────────
+# Anthropic stays in the existing midnight-navy palette (matches consensus card).
+# OpenAI gets a distinct green that reads as "different lab" without screaming.
+_FAMILY_COLOR = {
+    "anthropic": "var(--midnight-navy)",
+    "openai":    "#1b8c5a",  # forest green, accessible on both light + dark
+}
+
+
+def _family_for_model(model_id: str) -> str:
+    if not model_id:
+        return "anthropic"
+    if model_id.startswith("openai/"):
+        return "openai"
+    return "anthropic"
+
+
+def _color_for_frame(frame_name: str) -> str:
+    """Return CSS color for a frame's assigned canonical model family."""
+    model_id = FRAME_MODEL_MAP.get(frame_name, "")
+    family = _family_for_model(model_id)
+    return _FAMILY_COLOR.get(family, "var(--midnight-navy)")
 
 
 # ───────── Map SVG (TenthAI v3 layout) ─────────
@@ -591,7 +1056,7 @@ def _build_map_svg(coords_2d, frames, distances, max_frame_dist, min_frame_dist,
     )
 
     # Nine consensus nodes
-    parts.append('<g font-family="DM Sans, sans-serif" font-size="13" fill="#1b2540">')
+    parts.append('<g font-family="Source Sans 3, Source Sans Pro, sans-serif" font-size="13" fill="#1b2540">')
     for i in range(9):
         x, y = points[i]
         frame = frames[i]
@@ -612,8 +1077,9 @@ def _build_map_svg(coords_2d, frames, distances, max_frame_dist, min_frame_dist,
             suffix = " · " + t(locale, "flag_closest")
         elif is_farthest:
             suffix = " · " + t(locale, "flag_farthest")
+        node_color = _color_for_frame(frame)
         parts.append('<g>')
-        parts.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{marker_r}" fill="#1b2540"/>')
+        parts.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{marker_r}" fill="{node_color}"/>')
         if is_closest:
             parts.append(
                 f'<circle cx="{x:.1f}" cy="{y:.1f}" r="14" fill="none" '
@@ -644,7 +1110,7 @@ def _build_map_svg(coords_2d, frames, distances, max_frame_dist, min_frame_dist,
     label_offset = -52 if ty > cy - 60 else 64
     parts.append(
         f'<text x="{tx:.1f}" y="{ty + label_offset:.1f}" text-anchor="middle" '
-        f'font-family="DM Sans, sans-serif" font-weight="500" font-size="13" '
+        f'font-family="Source Sans 3, Source Sans Pro, sans-serif" font-weight="500" font-size="13" '
         f'fill="#1b2540" letter-spacing="2">10 · TENTH-MAN</text>'
     )
     parts.append(
@@ -667,22 +1133,30 @@ def _build_map_svg(coords_2d, frames, distances, max_frame_dist, min_frame_dist,
     return "\n".join(parts)
 
 
-def _build_frame_card(frame, response, status, distance, max_dist, idx_str, is_open=False):
+def _build_frame_card(frame, response, status, distance, max_dist, idx_str,
+                      is_open=False, lean=""):
     """Build a frame-list article in the v3 table layout.
 
-    Open by default for the closest frame to the centroid.
+    Open by default for the closest frame to the centroid. ``lean`` is the
+    one-line verdict shown in the Lean column (extracted upstream from the
+    frame response). Failed frames render an italic ``frame failed`` line so
+    the row keeps a meaningful slot.
     """
     body = _md_to_html(response)
     bar_pct = min(100, (distance / max_dist) * 100) if max_dist > 0 else 0
-    status_label = "OK" if status == "ok" else "FAILED"
     open_class = " open" if is_open else ""
-    suffix_html = ""
+    if status != "ok":
+        lean_html = "<em>frame failed</em>"
+    elif lean:
+        lean_html = html_mod.escape(lean).replace("&amp;hellip;", "&hellip;")
+    else:
+        lean_html = ""
     return f"""
     <article class="frame{open_class}" data-frame="{html_mod.escape(frame)}">
       <div class="frame-row">
         <span class="f-idx">#{idx_str}</span>
         <span class="f-name">{html_mod.escape(frame)}</span>
-        <span class="f-tag"><span class="d"></span>{status_label}{suffix_html}</span>
+        <span class="f-lean">{lean_html}</span>
         <span class="f-bar"><i style="width:{bar_pct:.0f}%"></i></span>
         <span class="f-d">d <b>{distance:.3f}</b></span>
         <span class="f-caret">›</span>
@@ -695,19 +1169,42 @@ def _build_frame_card(frame, response, status, distance, max_dist, idx_str, is_o
 
 
 def _build_frame_card_with_flag(frame, response, status, distance, max_dist, idx_str,
-                                is_open=False, flag=None):
-    """Same as _build_frame_card but injects a closest/farthest tag suffix."""
+                                is_open=False, flag=None, flag_kind=None, lean=""):
+    """Same as _build_frame_card but appends a closest/farthest chip to the name.
+
+    ``flag`` is the localized label ("closest" / "más cercano" / ...).
+    ``flag_kind`` is the canonical key ("closest" / "farthest") used to pick
+    the chip variant in CSS — solid chartreuse for closest, outlined for farthest.
+    """
     body = _md_to_html(response)
     bar_pct = min(100, (distance / max_dist) * 100) if max_dist > 0 else 0
-    status_label = "OK" if status == "ok" else "FAILED"
     open_class = " open" if is_open else ""
-    flag_html = f' · <b>{html_mod.escape(flag)}</b>' if flag else ""
+    if flag:
+        kind_class = f" {html_mod.escape(flag_kind)}" if flag_kind else ""
+        flag_html = f' <span class="f-mark{kind_class}">{html_mod.escape(flag)}</span>'
+    else:
+        flag_html = ""
+    # Phase 9: canonical model-id chip
+    chip_html = ""
+    cid = FRAME_MODEL_MAP.get(frame, "")
+    if cid:
+        fam = _family_for_model(cid)
+        chip_html = f'<span class="frame-model-chip frame-model-{fam}">{html_mod.escape(cid)}</span>'
+    if status != "ok":
+        lean_html = "<em>frame failed</em>"
+    elif lean:
+        lean_html = html_mod.escape(lean).replace("&amp;hellip;", "&hellip;")
+    else:
+        lean_html = ""
     return f"""
     <article class="frame{open_class}" data-frame="{html_mod.escape(frame)}">
       <div class="frame-row">
         <span class="f-idx">#{idx_str}</span>
-        <span class="f-name">{html_mod.escape(frame)}</span>
-        <span class="f-tag"><span class="d"></span>{status_label}{flag_html}</span>
+        <span class="f-name">
+          <span class="f-name-text">{html_mod.escape(frame)}{flag_html}</span>
+          {chip_html}
+        </span>
+        <span class="f-lean">{lean_html}</span>
         <span class="f-bar"><i style="width:{bar_pct:.0f}%"></i></span>
         <span class="f-d">d <b>{distance:.3f}</b></span>
         <span class="f-caret">›</span>
@@ -719,7 +1216,7 @@ def _build_frame_card_with_flag(frame, response, status, distance, max_dist, idx
     """
 
 
-def render(question, results, coords_2d, distances, provider, model, cost_estimate_usd, consensus=None, cfi_data=None):
+def render(question, results, coords_2d, distances, provider, model, cost_estimate_usd, consensus=None, cfi_data=None, meta_frame=None, informed=None, claims=None):
     """Render the TenthAI/Antimetal-style disagreement report. Returns full HTML.
 
     Persistence and browser-open are handled by the caller (server.py orchestrates
@@ -731,6 +1228,14 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     table) → colophon.
     """
     locale = detect_locale(question)
+    meta_html = _meta_card_html(meta_frame, locale=locale)
+    informed_card_html = _informed_card_html(informed, locale=locale) if informed else ""
+    # v0.6 cosmetic: claims panel hidden in the HTML — Phase 6 data still
+    # extracted by the pipeline and persisted in report.json under
+    # "consensus_claims". Toggle this back to the original expression to
+    # surface the panel again. Helper kept for that case + downstream tools.
+    _ = _claims_panel_html  # silence unused-import linter
+    claims_panel_html = ""
 
     frames = [r[0] for r in results]
     responses = [r[1] for r in results]
@@ -783,6 +1288,15 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
         locale=locale,
     )
 
+    # Phase 9: family-color legend below the SVG
+    map_legend_html = (
+        '<div class="map-legend">'
+        f'  <span class="legend-dot" style="background: {_FAMILY_COLOR["anthropic"]};"></span>Anthropic'
+        f'  <span class="legend-dot" style="background: {_FAMILY_COLOR["openai"]};"></span>OpenAI'
+        '  <span class="legend-dot legend-tenth"></span>Tenth-man (blind)'
+        '</div>'
+    )
+
     # Frames sorted by distance ASC; closest is default open
     frame_order = sorted(range(9), key=lambda i: frame_distances[i])
     frame_cards_html = "\n".join(
@@ -797,6 +1311,10 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
             flag=(t(locale, "flag_closest") if i == closest_frame_idx
                   else t(locale, "flag_farthest") if i == most_divergent_idx
                   else None),
+            flag_kind=("closest" if i == closest_frame_idx
+                       else "farthest" if i == most_divergent_idx
+                       else None),
+            lean=_extract_lean(responses[i]) if statuses[i] == "ok" else "",
         )
         for i in frame_order
     )
@@ -823,13 +1341,14 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
 
     # Consensus block (optional). v3-styled card placed before the tenth-man.
     consensus_block_html = ""
+    consensus_title = ""
     if consensus:
         consensus_title, consensus_body_md = _split_consensus_title(consensus)
         if not consensus_title:
             consensus_title = t(locale, "consensus_default_title")
         consensus_html = _md_to_html(consensus_body_md)
         consensus_block_html = f"""
-    <article class="consensus-card">
+    <article class="consensus-card" id="consensus">
       <header class="consensus-top">
         <div>
           <div class="consensus-tag"><span class="d"></span>{t(locale, "consensus_tag_prefix")}{html_mod.escape(verdict_short.upper())}</div>
@@ -847,6 +1366,12 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     </article>
 """
 
+    # Hero quote teasers — derived from the consensus title and the tenth response.
+    # Both are shown on the hero panels and link to their full sections below.
+    nine_lean = consensus_title or t(locale, "consensus_default_title")
+    tenth_lean_raw = _extract_lean(responses[9], max_chars=110)
+    tenth_lean_html = html_mod.escape(tenth_lean_raw).replace("&amp;hellip;", "&hellip;")
+
     timestamp = datetime.now().strftime("%Y·%m·%d %H:%M CLT")
     timestamp_short = datetime.now().strftime("%Y·%m·%d")
     report_id = datetime.now().strftime("%H%M")
@@ -860,28 +1385,85 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
 <title>{t(locale, "page_title")}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,450;9..40,500;9..40,600&family=Fraunces:opsz,wght@9..144,400;9..144,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+  /* Resolve theme before first paint to avoid FOUC.
+     Stored preference wins; otherwise follow system. */
+  (function() {{
+    var stored = null;
+    try {{ stored = localStorage.getItem('henge-theme'); }} catch (e) {{}}
+    var theme = (stored === 'light' || stored === 'dark')
+      ? stored
+      : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  }})();
+</script>
 <style>
   :root{{
     --midnight-navy: #1b2540;
     --deep-cosmos: #001033;
     --chartreuse: #d0f100;
     --ice-veil: #e0f6ff;
+    --amber-veil: #fff3e6;
+    --amber:      #d97a1c;
+    --amber-soft: rgba(217,122,28,0.12);
+    --amber-rule: rgba(217,122,28,0.32);
     --ghost-canvas: #f8f9fc;
     --pure: #ffffff;
-    --slate-ink: #6b7184;
     --ash: #7c8293;
     --storm: #596075;
     --fog: #b1b5c0;
 
+    /* Tinted whites for use on dark surfaces */
+    --on-dark:        #fafeff;
+    --on-dark-92:     rgba(224,246,255,0.92);
+    --on-dark-78:     rgba(224,246,255,0.78);
+    --on-dark-62:     rgba(224,246,255,0.62);
+    --on-dark-32:     rgba(224,246,255,0.32);
+    --on-dark-border-strong: rgba(224,246,255,0.18);
+
+    /* Translucent surfaces */
+    --surface-glass-08:   rgba(255,255,255,0.08);
+    --surface-glass-soft: rgba(255,255,255,0.55);
+
+    /* Border/rule semantic aliases (for new components) */
+    --border-subtle: rgba(0,39,80,0.06);
+    --border-rule:   rgba(0,39,80,0.08);
+
+    /* Chartreuse alpha ramp */
+    --chartreuse-04: rgba(208,241,0,0.04);
+    --chartreuse-10: rgba(208,241,0,0.10);
+    --chartreuse-14: rgba(208,241,0,0.14);
+    --chartreuse-18: rgba(208,241,0,0.18);
+    --chartreuse-20: rgba(208,241,0,0.20);
+    --chartreuse-25: rgba(208,241,0,0.25);
+    --chartreuse-28: rgba(208,241,0,0.28);
+    --chartreuse-32: rgba(208,241,0,0.32);
+    --chartreuse-55: rgba(208,241,0,0.55);
+
+    /* Glow — used on tenth-quote panel */
+    --glow-chartreuse:       0 0 0 1px var(--chartreuse-20), 0 0 24px var(--chartreuse-18), 0 0 60px var(--chartreuse-10);
+    --glow-chartreuse-hover: 0 0 0 1px var(--chartreuse-32), 0 0 28px var(--chartreuse-28), 0 0 70px var(--chartreuse-14);
+
+    /* Map line tint (midnight-navy alpha) */
+    --navy-08: rgba(27,37,64,0.08);
+
     --shadow-xl: rgba(0,39,80,0.03) 0 56px 72px -16px, rgba(0,39,80,0.03) 0 32px 32px -16px, rgba(0,39,80,0.04) 0 6px 12px -3px, rgba(0,39,80,0.04) 0 0 0 1px;
     --shadow-md: rgba(0,39,80,0.08) 0 6px 16px -3px, rgba(0,39,80,0.04) 0 0 0 1px;
     --shadow-subtle: rgba(255,255,255,0.72) 0 1px 1px 0 inset, rgba(4,33,80,0.02) 0 8px 16px 0, rgba(4,33,80,0.03) 0 4px 12px 0, rgba(4,33,80,0.06) 0 1px 2px 0, rgba(4,33,80,0.04) 0 0 0 1px;
+    --ring-subtle: rgba(0,39,80,0.04) 0 0 0 1px;
+    --ring-rule:   rgba(0,39,80,0.06) 0 0 0 1px;
 
-    --sans:  'DM Sans', ui-sans-serif, system-ui, sans-serif;
+    --sans:  'Source Sans 3', 'Source Sans Pro', ui-sans-serif, system-ui, sans-serif;
     --serif: 'Fraunces', Georgia, serif;
     --mono:  'JetBrains Mono', ui-monospace, monospace;
+
+    color-scheme: light dark;
   }}
+
+  /* Dark mode — token flips live alongside :root above; component overrides
+     are at the bottom of this stylesheet so they win over base declarations. */
+
   *{{ box-sizing: border-box; }}
   html, body{{ margin:0; padding:0; }}
   body{{
@@ -902,7 +1484,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     padding: 18px 32px 14px;
     display: flex; align-items: center; justify-content: space-between;
     gap: 16px; flex-wrap: wrap;
-    border-bottom: 1px solid rgba(0,39,80,0.08);
+    border-bottom: 1px solid var(--border-rule);
   }}
   .logo{{
     display:flex; align-items:center; gap: 10px;
@@ -919,7 +1501,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   }}
   .mast-meta{{
     font-family: var(--mono); font-size: 12px;
-    color: var(--slate-ink); letter-spacing: 0.02em;
+    color: var(--storm); letter-spacing: 0.02em;
   }}
   .mast-meta b{{ color: var(--midnight-navy); font-weight: 500; }}
   .mast-meta .sep{{ color: var(--fog); margin: 0 8px; }}
@@ -940,6 +1522,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     border-color: var(--midnight-navy);
   }}
   .mast-index-btn svg{{ flex-shrink: 0; }}
+  .mast-actions{{ display: inline-flex; align-items: center; gap: 8px; }}
 
   /* Hero */
   .hero{{
@@ -948,8 +1531,8 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     border-radius: 20px;
     overflow: hidden;
     position: relative;
-    box-shadow: var(--shadow-xl);
-    color: #fafeff;
+    box-shadow: var(--shadow-md);
+    color: var(--on-dark);
     isolation: isolate;
   }}
   .hero-bg{{
@@ -989,38 +1572,82 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     margin: 0;
     max-width: 52ch;
     font-size: 15.5px; line-height: 1.5;
-    color: rgba(224,246,255,0.92);
+    color: var(--on-dark-92);
     letter-spacing: -0.09px;
   }}
 
-  .hero-stats{{
+  /* Hero verdict eyebrow */
+  .hero-verdict{{
+    display: inline-flex; gap: 8px; align-items: baseline;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--on-dark-78);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 14px;
+  }}
+  .hero-verdict b{{ color: var(--chartreuse); font-weight: 500; }}
+  .hero-verdict .sep{{ color: var(--on-dark-32); }}
+
+  /* Hero quote panels — translucent glass over the painting */
+  .hero-quotes{{
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 12px;
   }}
-  .hero-stat{{
-    background: rgba(255,255,255,0.08);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(224,246,255,0.18);
-    border-radius: 14px;
-    padding: 14px 16px;
+  .hero-quote{{
+    display: block;
+    background: var(--surface-glass-08);
+    backdrop-filter: blur(14px) saturate(120%);
+    -webkit-backdrop-filter: blur(14px) saturate(120%);
+    border: 1px solid var(--on-dark-border-strong);
+    border-radius: 16px;
+    padding: 14px 18px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease;
   }}
-  .hero-stat .lbl{{
-    font-family: var(--mono); font-size: 10.5px;
-    color: rgba(224,246,255,0.78);
-    text-transform: uppercase; letter-spacing: 0.04em;
-    margin-bottom: 6px;
+  .hero-quote:hover{{ transform: translateY(-1px); }}
+  .hero-quote:focus-visible{{ outline: 2px solid var(--chartreuse); outline-offset: 3px; }}
+  .hero-quote.consensus:hover{{ border-color: var(--on-dark-32); }}
+  .hero-quote.tenth{{
+    background: linear-gradient(180deg, var(--chartreuse-04), var(--surface-glass-08));
+    border-color: var(--chartreuse-55);
+    box-shadow: var(--glow-chartreuse);
   }}
-  .hero-stat .val{{
+  .hero-quote.tenth:hover{{
+    border-color: var(--chartreuse);
+    box-shadow: var(--glow-chartreuse-hover);
+  }}
+  .hero-quote .mark{{
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--on-dark-78);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }}
+  .hero-quote.consensus .mark .d{{
+    width: 6px; height: 6px; border-radius: 9999px;
+    background: var(--on-dark-32);
+  }}
+  .hero-quote.tenth .mark .d{{
+    width: 7px; height: 7px; border-radius: 9999px;
+    background: var(--chartreuse);
+    box-shadow: 0 0 0 2px var(--chartreuse-25);
+  }}
+  .hero-quote.tenth .mark .ord{{ color: var(--chartreuse); font-weight: 500; }}
+  .hero-q{{
+    margin: 0 0 8px;
     font-family: var(--serif); font-weight: 400;
-    font-size: 22px; line-height: 1; letter-spacing: -0.22px;
-    color: #fafeff;
-    font-variant-numeric: tabular-nums;
+    font-size: 16px; line-height: 1.3;
+    letter-spacing: -0.16px;
+    color: var(--on-dark);
+    text-wrap: balance;
+    quotes: none;
   }}
-  .hero-stat .val.acc{{ color: var(--chartreuse); }}
-  .hero-stat .sub{{
-    margin-top: 4px;
-    font-size: 12px; color: rgba(224,246,255,0.70);
+  .hero-q em{{ font-style: italic; color: var(--chartreuse); }}
+  .hero-quote .cite{{
+    font-family: var(--mono); font-size: 11px;
+    color: var(--on-dark-62);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
   }}
 
   /* Sections */
@@ -1035,17 +1662,25 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     margin-bottom: 28px;
   }}
   .sec-head .l{{ max-width: 64ch; }}
+  .sec-head-question{{ align-items: start; }}
+  .sec-head-question .l{{ flex: 0 0 auto; max-width: 38%; }}
+  .sec-head-question .r{{ flex: 1 1 auto; max-width: 62%; padding-top: 6px; }}
+  @media (max-width: 820px){{
+    .sec-head-question{{ flex-direction: column; }}
+    .sec-head-question .l, .sec-head-question .r{{ max-width: none; }}
+  }}
+  .meta-card{{ margin: 0 0 24px; }}
   .sec-eyebrow{{
     display: inline-flex; align-items: center; gap: 8px;
     font-family: var(--mono); font-size: 12px;
-    color: var(--slate-ink);
+    color: var(--storm);
     text-transform: uppercase; letter-spacing: 0.04em;
     margin-bottom: 12px;
   }}
   .sec-eyebrow .n{{
     background: var(--midnight-navy); color: var(--pure);
     padding: 2px 7px; border-radius: 9999px;
-    font-size: 10.5px; letter-spacing: 0.06em;
+    font-size: 11.5px; letter-spacing: 0.06em;
   }}
   .sec-head h2{{
     margin: 0;
@@ -1060,15 +1695,15 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     font-size: 16px; color: var(--storm); letter-spacing: -0.16px;
   }}
   .question-pull{{
-    margin: 20px 0 0;
+    margin: 0;
     padding: 6px 0 6px 22px;
     border-left: 3px solid var(--chartreuse);
     font-family: var(--serif);
     font-style: italic;
     font-weight: 400;
-    font-size: 24px;
-    line-height: 1.35;
-    letter-spacing: -0.22px;
+    font-size: 20px;
+    line-height: 1.4;
+    letter-spacing: -0.18px;
     color: var(--midnight-navy);
     text-wrap: balance;
     max-width: 64ch;
@@ -1084,7 +1719,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   .map-top{{
     display: flex; justify-content: space-between; align-items: center;
     padding: 20px 24px;
-    border-bottom: 1px solid rgba(0,39,80,0.06);
+    border-bottom: 1px solid var(--border-subtle);
   }}
   .map-top .l{{ display:flex; align-items:center; gap: 14px; }}
   .map-top .pill{{
@@ -1094,13 +1729,13 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     padding: 5px 12px;
     font-family: var(--mono); font-size: 11px;
     color: var(--midnight-navy);
-    box-shadow: rgba(0,39,80,0.04) 0 0 0 1px;
+    box-shadow: var(--ring-subtle);
   }}
   .map-top .pill .d{{ width: 6px; height: 6px; border-radius: 9999px; background: var(--chartreuse); }}
   .map-top .meta{{
-    font-family: var(--mono); font-size: 12px; color: var(--slate-ink);
+    font-family: var(--mono); font-size: 12px; color: var(--storm);
   }}
-  .legend-row{{ display:flex; gap: 16px; align-items: center; font-size: 13px; color: var(--slate-ink); }}
+  .legend-row{{ display:flex; gap: 16px; align-items: center; font-size: 14px; color: var(--storm); }}
   .legend-row .ld{{
     display: inline-block; width: 9px; height: 9px;
     border-radius: 9999px; margin-right: 7px; transform: translateY(-1px);
@@ -1119,16 +1754,16 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     display: grid;
     grid-template-columns: 1fr 1fr 1fr 1fr;
     gap: 0;
-    border-top: 1px solid rgba(0,39,80,0.06);
+    border-top: 1px solid var(--border-subtle);
   }}
   .map-foot .cell{{
     padding: 16px 20px;
-    border-right: 1px solid rgba(0,39,80,0.06);
+    border-right: 1px solid var(--border-subtle);
   }}
   .map-foot .cell:last-child{{ border-right: 0; }}
   .map-foot .cell .lbl{{
     font-family: var(--mono); font-size: 11px;
-    color: var(--slate-ink); text-transform: uppercase;
+    color: var(--storm); text-transform: uppercase;
     letter-spacing: 0.04em; margin-bottom: 6px;
   }}
   .map-foot .cell .val{{
@@ -1147,7 +1782,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   }}
   .map-foot .cell .sub{{
     margin-top: 4px;
-    font-size: 13px; color: var(--slate-ink);
+    font-size: 14px; color: var(--storm);
   }}
 
   /* Consensus card (navy-themed) */
@@ -1163,7 +1798,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     display: grid; grid-template-columns: 1fr auto;
     align-items: start; gap: 24px;
     padding: 24px 28px;
-    border-bottom: 1px solid rgba(0,39,80,0.06);
+    border-bottom: 1px solid var(--border-subtle);
   }}
   .consensus-tag{{
     display: inline-flex; align-items: center; gap: 8px;
@@ -1190,13 +1825,13 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   }}
   .consensus-d{{
     text-align: right;
-    background: rgba(255,255,255,0.55);
+    background: var(--surface-glass-soft);
     backdrop-filter: blur(4px);
     border-radius: 16px;
     padding: 14px 18px;
-    box-shadow: rgba(0,39,80,0.06) 0 0 0 1px;
+    box-shadow: var(--ring-rule);
     font-family: var(--mono); font-size: 11px;
-    color: var(--slate-ink);
+    color: var(--storm);
     text-transform: uppercase; letter-spacing: 0.04em;
   }}
   .consensus-d b{{
@@ -1211,7 +1846,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     padding: 28px 32px;
     column-count: 2;
     column-gap: 40px;
-    column-rule: 1px solid rgba(0,39,80,0.06);
+    column-rule: 1px solid var(--border-subtle);
     font-size: 16px;
     line-height: 1.55;
     color: var(--midnight-navy);
@@ -1227,7 +1862,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--slate-ink);
+    color: var(--storm);
     break-after: avoid;
   }}
   .consensus-body h2:not(:first-child),
@@ -1240,42 +1875,95 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     background: var(--ghost-canvas);
     border-radius: 16px;
     padding: 14px 18px;
-    box-shadow: rgba(0,39,80,0.04) 0 0 0 1px;
+    box-shadow: var(--ring-subtle);
     font-family: var(--serif); font-weight: 400;
     font-size: 18px; line-height: 1.35; letter-spacing: -0.18px;
     color: var(--midnight-navy);
     break-inside: avoid-column;
   }}
 
-  /* Tenth-man feature card */
+  /* Meta-frame audit card */
+  .meta-card{{
+    margin: 16px 0 24px;
+    padding: 18px 22px;
+    border: 1px solid var(--border-rule);
+    border-radius: 12px;
+    background: var(--surface-glass-soft);
+    box-shadow: var(--ring-rule);
+  }}
+  .meta-card h3{{ margin: 0 0 12px; font-family: var(--sans); font-size: 12px; font-weight: 600; color: var(--storm); text-transform: uppercase; letter-spacing: 0.06em; }}
+  .meta-body{{
+    display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 24px;
+    align-items: start;
+  }}
+  .meta-grid{{
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+  }}
+  @media (max-width: 820px){{
+    .meta-body{{ grid-template-columns: 1fr; gap: 14px; }}
+  }}
+  @media (max-width: 480px){{ .meta-grid{{ grid-template-columns: 1fr; }} }}
+  .meta-cell{{
+    padding: 10px 12px; border-radius: 10px;
+    background: rgba(255,255,255,0.55);
+    border: 1px solid var(--border-subtle);
+    font-family: var(--sans);
+  }}
+  .meta-cell-axis{{
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--storm); margin-bottom: 4px;
+  }}
+  .meta-cell-value{{
+    font-size: 14px; font-weight: 600; color: var(--midnight-navy);
+    line-height: 1.2; margin-bottom: 4px;
+  }}
+  .meta-cell-hint{{
+    font-size: 12px; line-height: 1.4; color: var(--storm);
+  }}
+  .meta-cell-ok{{    background: rgba(0,150,80,0.10);  border-color: rgba(0,150,80,0.28); }}
+  .meta-cell-ok .meta-cell-value{{ color: #047a47; }}
+  .meta-cell-warn{{  background: var(--chartreuse-14); border-color: var(--chartreuse-32); }}
+  .meta-cell-warn .meta-cell-value{{ color: var(--midnight-navy); }}
+  .meta-cell-stop{{  background: rgba(200,40,40,0.08); border-color: rgba(200,40,40,0.28); }}
+  .meta-cell-stop .meta-cell-value{{ color: #b32424; }}
+  .meta-reasoning{{ font-size: 15px; line-height: 1.55; color: var(--storm); font-family: var(--sans); }}
+  .meta-reasoning p{{ margin: 0 0 10px; }}
+  .meta-reasoning p:last-child{{ margin-bottom: 0; }}
+  [data-theme="dark"] .meta-card{{ background: var(--surface-glass-08); border-color: var(--on-dark-border-strong); }}
+  [data-theme="dark"] .meta-card h3{{ color: var(--on-dark-78); }}
+  [data-theme="dark"] .meta-cell{{ background: rgba(0,0,0,0.20); border-color: var(--on-dark-border-strong); }}
+  [data-theme="dark"] .meta-cell-value{{ color: var(--on-dark); }}
+  [data-theme="dark"] .meta-cell-hint{{ color: var(--on-dark-78); }}
+  [data-theme="dark"] .meta-cell-ok{{    background: rgba(0,150,80,0.18);  border-color: rgba(0,150,80,0.40); }}
+  [data-theme="dark"] .meta-cell-warn{{  background: var(--chartreuse-14); border-color: var(--chartreuse-32); }}
+  [data-theme="dark"] .meta-cell-stop{{  background: rgba(200,40,40,0.18); border-color: rgba(200,40,40,0.40); }}
+  [data-theme="dark"] .meta-reasoning{{ color: var(--on-dark-92); }}
+
+  /* Tenth-man feature card — amber-themed counterpoint to the celeste consensus */
   .tenth-card{{
-    background: var(--pure);
+    background: linear-gradient(180deg, var(--amber-veil) 0%, var(--pure) 100%);
     border-radius: 20px;
     box-shadow: var(--shadow-xl);
     overflow: hidden;
     margin-top: 24px;
     position: relative;
   }}
-  .tenth-card::before{{
-    content: "";
-    position: absolute; left: 0; top: 0; bottom: 0;
-    width: 4px; background: var(--chartreuse);
-  }}
   .tenth-top{{
     display: grid; grid-template-columns: 1fr auto;
     align-items: start; gap: 24px;
     padding: 24px 28px;
-    border-bottom: 1px solid rgba(0,39,80,0.06);
+    border-bottom: 1px solid var(--amber-rule);
   }}
   .tenth-tag{{
     display: inline-flex; align-items: center; gap: 8px;
-    background: var(--midnight-navy); color: var(--chartreuse);
+    background: var(--midnight-navy); color: var(--amber);
     border-radius: 9999px; padding: 4px 10px;
     font-family: var(--mono); font-size: 11px;
     text-transform: uppercase; letter-spacing: 0.06em;
     margin-bottom: 12px;
   }}
-  .tenth-tag .d{{ width: 5px; height: 5px; border-radius: 9999px; background: var(--chartreuse); }}
+  .tenth-tag .d{{ width: 5px; height: 5px; border-radius: 9999px; background: var(--amber); }}
+  .tenth-top h3 em{{ color: var(--amber); }}
   .tenth-lead{{
     margin: 0 0 8px;
     font-size: 14px;
@@ -1290,16 +1978,16 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     text-wrap: balance;
     max-width: 24ch;
   }}
-  .tenth-top h3 em{{ font-style: italic; }}
+  .tenth-top h3 em{{ font-style: italic; color: var(--amber); }}
 
   .tenth-d-stat{{
     text-align: right;
-    background: var(--ghost-canvas);
+    background: var(--amber-soft);
     border-radius: 16px;
     padding: 14px 18px;
-    box-shadow: rgba(0,39,80,0.04) 0 0 0 1px;
+    box-shadow: 0 0 0 1px var(--amber-rule);
     font-family: var(--mono); font-size: 11px;
-    color: var(--slate-ink);
+    color: var(--storm);
     text-transform: uppercase; letter-spacing: 0.04em;
   }}
   .tenth-d-stat b{{
@@ -1313,13 +2001,12 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
 
   .tenth-body{{
     padding: 24px 28px;
-    max-width: 78ch;
   }}
   .tenth-body h4{{
     margin: 24px 0 8px;
     font-family: var(--mono); font-weight: 500;
     font-size: 11px; text-transform: uppercase;
-    letter-spacing: 0.04em; color: var(--slate-ink);
+    letter-spacing: 0.04em; color: var(--storm);
   }}
   .tenth-body h4:first-child{{ margin-top: 0; }}
   .tenth-body h4 .ord{{ color: var(--midnight-navy); margin-right: 8px; }}
@@ -1336,7 +2023,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     background: var(--ghost-canvas);
     border-radius: 16px;
     padding: 18px 20px;
-    box-shadow: rgba(0,39,80,0.04) 0 0 0 1px;
+    box-shadow: var(--ring-subtle);
     font-family: var(--serif); font-weight: 400;
     font-size: 22px; line-height: 1.29; letter-spacing: -0.22px;
     color: var(--midnight-navy);
@@ -1358,11 +2045,11 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     background: var(--ghost-canvas);
     border-radius: 16px;
     padding: 18px;
-    box-shadow: rgba(0,39,80,0.04) 0 0 0 1px;
+    box-shadow: var(--ring-subtle);
   }}
   .mode .ord{{
     font-family: var(--mono); font-size: 11px;
-    color: var(--slate-ink);
+    color: var(--storm);
     text-transform: uppercase; letter-spacing: 0.04em;
   }}
   .mode h5{{
@@ -1379,13 +2066,124 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
 
   .tenth-foot{{
     padding: 14px 28px;
-    border-top: 1px solid rgba(0,39,80,0.06);
+    border-top: 1px solid var(--border-subtle);
     background: var(--ghost-canvas);
     display: flex; justify-content: space-between;
     font-family: var(--mono); font-size: 12px;
-    color: var(--slate-ink);
+    color: var(--storm);
   }}
   .tenth-foot b{{ color: var(--midnight-navy); }}
+
+  /* Informed dissent card (Phase 5 cross-lab reconciliation) */
+  .informed-card{{
+    margin: 16px 0 0;
+    padding: 20px 22px;
+    border: 1px solid var(--border-rule);
+    border-radius: 14px;
+    background: var(--surface-glass-soft);
+    box-shadow: var(--ring-rule);
+  }}
+  .informed-top{{ margin-bottom: 14px; }}
+  .informed-tag{{
+    display: inline-block; padding: 2px 8px; margin-bottom: 6px;
+    font-size: 11px; font-family: var(--mono); letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--midnight-navy);
+    background: var(--chartreuse); border-radius: 999px;
+  }}
+  .informed-top h3{{ margin: 0 0 4px; font-family: var(--serif); font-size: 22px; font-weight: 500; color: var(--midnight-navy); }}
+  .informed-sub{{ margin: 0; font-size: 14px; color: var(--storm); font-family: var(--sans); }}
+  .informed-body{{ font-family: var(--sans); }}
+  .informed-body p{{ margin: 0 0 12px; line-height: 1.55; color: var(--midnight-navy); }}
+  .informed-grid{{
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px;
+  }}
+  .informed-col{{
+    background: var(--ghost-canvas);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: var(--ring-subtle);
+  }}
+  .informed-col .ord{{
+    font-family: var(--mono); font-size: 11px;
+    color: var(--storm);
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }}
+  .informed-col h5{{
+    margin: 8px 0 10px;
+    font-family: var(--sans); font-weight: 480;
+    font-size: 17px; letter-spacing: -0.09px;
+    color: var(--midnight-navy);
+  }}
+  .informed-list{{ margin: 0; padding-left: 16px; font-size: 14px; line-height: 1.45; color: var(--midnight-navy); }}
+  .informed-list li{{ margin-bottom: 6px; }}
+  .informed-list.discarded li{{ color: var(--storm); text-decoration: line-through; opacity: 0.75; }}
+  @media (max-width: 720px){{ .informed-grid{{ grid-template-columns: 1fr; }} }}
+  [data-theme="dark"] .informed-card{{ background: var(--surface-glass-08); border-color: var(--on-dark-border-strong); }}
+  [data-theme="dark"] .informed-top h3{{ color: var(--on-dark); }}
+  [data-theme="dark"] .informed-sub{{ color: var(--on-dark-78); }}
+  [data-theme="dark"] .informed-body p{{ color: var(--on-dark-92); }}
+  [data-theme="dark"] .informed-col h5{{ color: var(--on-dark); }}
+  [data-theme="dark"] .informed-list{{ color: var(--on-dark-92); }}
+  [data-theme="dark"] .informed-list.discarded li{{ color: var(--on-dark-62); }}
+
+  /* Claims panel */
+  .claims-panel{{
+    margin: 16px 0 0;
+    padding: 18px 22px;
+    border: 1px solid var(--border-rule);
+    border-radius: 14px;
+    background: var(--surface-glass-soft);
+    box-shadow: var(--ring-rule);
+    font-family: var(--sans);
+  }}
+  .claims-head h3{{ margin: 0 0 4px; font-family: var(--serif); font-size: 20px; font-weight: 500; color: var(--midnight-navy); }}
+  .claims-sub{{ margin: 0 0 12px; font-size: 14px; color: var(--storm); }}
+  .claims-grid{{
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+  }}
+  @media (max-width: 820px){{ .claims-grid{{ grid-template-columns: 1fr; }} }}
+  .claim-card{{
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 14px 16px; border: 1px solid var(--border-subtle); border-radius: 12px;
+    background: white;
+  }}
+  .claim-head{{ display: flex; gap: 8px; align-items: center; justify-content: space-between; }}
+  .claim-type{{
+    font-size: 11px; font-family: var(--mono); text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--storm);
+    padding: 2px 6px; border: 1px solid var(--border-subtle); border-radius: 999px;
+  }}
+  .claim-strength{{
+    font-size: 11px; font-family: var(--mono); text-transform: uppercase;
+    letter-spacing: 0.06em; padding: 2px 8px; border-radius: 999px;
+    white-space: nowrap;
+  }}
+  .claim-strength-strong{{      background: rgba(0,150,80,0.12);   color: #047a47;  border: 1px solid rgba(0,150,80,0.30); }}
+  .claim-strength-moderate{{    background: var(--chartreuse-14);  color: var(--midnight-navy); border: 1px solid var(--chartreuse-32); }}
+  .claim-strength-weak{{        background: rgba(220,140,0,0.10);  color: #a36800;  border: 1px solid rgba(220,140,0,0.30); }}
+  .claim-strength-unsupported{{ background: rgba(200,40,40,0.10);  color: #b32424;  border: 1px solid rgba(200,40,40,0.32); }}
+  .claim-text{{ margin: 0; font-size: 14px; line-height: 1.5; color: var(--midnight-navy); }}
+  .claim-strip{{
+    display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px;
+    margin-top: 2px;
+  }}
+  .claim-dot{{
+    display: flex; align-items: center; justify-content: center;
+    height: 22px; border-radius: 6px;
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.04em;
+    border: 1px solid var(--border-subtle);
+    cursor: default;
+  }}
+  .claim-dot-support{{ background: rgba(0,150,80,0.18);  color: #047a47;  border-color: rgba(0,150,80,0.40); font-weight: 600; }}
+  .claim-dot-contest{{ background: rgba(200,40,40,0.18); color: #b32424;  border-color: rgba(200,40,40,0.45); font-weight: 600; text-decoration: line-through; }}
+  .claim-dot-neutral{{ background: transparent;          color: var(--fog); border-color: var(--border-subtle); }}
+  [data-theme="dark"] .claims-panel{{ background: var(--surface-glass-08); border-color: var(--on-dark-border-strong); }}
+  [data-theme="dark"] .claims-head h3{{ color: var(--on-dark); }}
+  [data-theme="dark"] .claims-sub{{ color: var(--on-dark-78); }}
+  [data-theme="dark"] .claim-card{{ background: rgba(0,0,0,0.20); border-color: var(--on-dark-border-strong); }}
+  [data-theme="dark"] .claim-text{{ color: var(--on-dark-92); }}
+  [data-theme="dark"] .claim-type{{ color: var(--on-dark-78); border-color: var(--on-dark-border-strong); }}
+  [data-theme="dark"] .claim-dot-neutral{{ color: var(--on-dark-32); border-color: var(--on-dark-border-strong); }}
 
   /* Frames table */
   .frames{{
@@ -1400,14 +2198,14 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     grid-template-columns: 60px 220px 1fr 160px 100px 24px;
     gap: 16px;
     padding: 14px 24px;
-    border-bottom: 1px solid rgba(0,39,80,0.06);
+    border-bottom: 1px solid var(--border-subtle);
     background: var(--ghost-canvas);
     font-family: var(--mono); font-size: 11px;
-    color: var(--slate-ink);
+    color: var(--storm);
     text-transform: uppercase; letter-spacing: 0.04em;
   }}
   .frame{{
-    border-bottom: 1px solid rgba(0,39,80,0.06);
+    border-bottom: 1px solid var(--border-subtle);
     cursor: pointer;
     transition: background .15s ease;
   }}
@@ -1422,27 +2220,37 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     padding: 16px 24px;
   }}
   .f-idx{{
-    font-family: var(--mono); font-size: 12px; color: var(--slate-ink);
+    font-family: var(--mono); font-size: 12px; color: var(--storm);
   }}
   .f-name{{
+    display: inline-flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
     font-family: var(--sans); font-weight: 480;
     font-size: 17px; letter-spacing: -0.09px;
     color: var(--midnight-navy);
   }}
-  .f-tag{{
-    display: inline-flex; align-items: center; gap: 6px;
-    background: var(--pure);
-    border-radius: 9999px;
-    padding: 4px 10px;
-    font-family: var(--mono); font-size: 11px;
-    color: var(--storm);
-    box-shadow: rgba(0,39,80,0.04) 0 0 0 1px;
-    width: max-content;
+  .f-name .f-mark{{
+    font-family: var(--mono); font-size: 11px; font-weight: 500;
+    color: var(--midnight-navy);
+    background: var(--chartreuse);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    padding: 2px 7px; border-radius: 9999px;
+    transform: translateY(-1px);
   }}
-  .f-tag .d{{ width: 5px; height: 5px; border-radius: 9999px; background: var(--chartreuse); }}
-  .f-tag b{{ color: var(--midnight-navy); font-weight: 500; }}
+  .f-name .f-mark.farthest{{
+    background: transparent; color: var(--storm);
+    box-shadow: var(--ring-rule);
+  }}
+  .f-lean{{
+    font-family: var(--serif); font-style: italic;
+    font-weight: 400; font-size: 14.5px;
+    line-height: 1.35; letter-spacing: -0.09px;
+    color: var(--storm);
+    max-width: 38ch;
+    text-wrap: balance;
+  }}
+  .f-lean strong{{ color: var(--midnight-navy); font-weight: 500; font-style: normal; }}
   .f-bar{{
-    height: 6px; background: rgba(27,37,64,0.08);
+    height: 6px; background: var(--navy-08);
     border-radius: 9999px;
     position: relative; overflow: hidden;
   }}
@@ -1452,14 +2260,14 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     border-radius: 9999px;
   }}
   .f-d{{
-    font-family: var(--mono); font-size: 13px;
+    font-family: var(--mono); font-size: 14px;
     color: var(--midnight-navy);
     text-align: right;
     font-variant-numeric: tabular-nums;
   }}
   .f-d b{{ font-weight: 500; }}
   .f-caret{{
-    color: var(--slate-ink);
+    color: var(--storm);
     font-family: var(--mono);
     transition: transform .15s ease;
     text-align: center;
@@ -1501,7 +2309,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     width: 28px; height: 28px;
     border-radius: 50%;
     background: var(--pure);
-    color: var(--slate-ink);
+    color: var(--storm);
     font-family: var(--serif);
     font-style: italic;
     font-size: 16px; font-weight: 500;
@@ -1531,7 +2339,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: var(--slate-ink);
+    color: var(--storm);
     font-weight: 500;
     margin: 0 0 10px;
   }}
@@ -1542,6 +2350,35 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   }}
   .map-help-popover p:last-child{{ margin-bottom: 0; }}
   .map-help-popover strong{{ font-weight: 600; }}
+
+  /* Phase 9: family-color legend below the SVG */
+  .map-legend{{
+    display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+    font-size: 12px; font-family: var(--mono); color: var(--storm);
+    margin: 8px 0 0; padding: 8px 28px 0; letter-spacing: 0.04em;
+  }}
+  .map-legend .legend-dot{{
+    display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+    margin-right: 6px; vertical-align: middle;
+  }}
+  .map-legend .legend-tenth{{ background: var(--chartreuse); border: 1px solid var(--midnight-navy); }}
+  [data-theme="dark"] .map-legend{{ color: var(--on-dark-78); }}
+  [data-theme="dark"] .map-legend .legend-tenth{{ border-color: var(--on-dark); }}
+
+  /* Phase 9: model-family chip on frame cards. Lives on its own line under
+     the frame name so all 9 cards render with the same vertical rhythm
+     regardless of whether a closest/farthest flag is present. */
+  .f-name{{ display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }}
+  .f-name-text{{ display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }}
+  .frame-model-chip{{
+    display: inline-block; padding: 2px 8px;
+    font-size: 11px; font-family: var(--mono); letter-spacing: 0.04em;
+    border-radius: 999px;
+  }}
+  .frame-model-anthropic{{ background: rgba(27,37,64,0.08); color: var(--midnight-navy); }}
+  .frame-model-openai{{    background: rgba(27,140,90,0.10); color: #1b8c5a; }}
+  [data-theme="dark"] .frame-model-anthropic{{ background: var(--surface-glass-08); color: var(--on-dark-92); }}
+  [data-theme="dark"] .frame-model-openai{{    background: rgba(27,140,90,0.18); color: #4dd49a; }}
 
   /* Reading guide — fixed floating bottom-right */
   .guide{{
@@ -1607,15 +2444,15 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   .guide-panel-foot{{
     flex-shrink: 0;
     padding: 14px 24px 18px;
-    border-top: 1px solid rgba(0,39,80,0.08);
+    border-top: 1px solid var(--border-rule);
     background: var(--ghost-canvas);
   }}
   .guide-panel .kicker{{
     font-family: var(--mono);
-    font-size: 10.5px;
+    font-size: 11.5px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--slate-ink);
+    color: var(--storm);
     margin: 0 0 8px;
   }}
   .guide-panel h3{{
@@ -1638,7 +2475,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     counter-increment: g;
     position: relative;
     padding: 12px 0 12px 30px;
-    border-top: 1px solid rgba(0,39,80,0.06);
+    border-top: 1px solid var(--border-subtle);
     font-size: 13.5px;
     line-height: 1.5;
     color: var(--storm);
@@ -1649,8 +2486,8 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     position: absolute;
     left: 0; top: 12px;
     font-family: var(--mono);
-    font-size: 10.5px;
-    color: var(--slate-ink);
+    font-size: 11.5px;
+    color: var(--storm);
     letter-spacing: 0.06em;
   }}
   .guide-panel ol li b{{ color: var(--midnight-navy); font-weight: 600; }}
@@ -1658,14 +2495,14 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     margin: 0 0 12px;
     font-family: var(--serif);
     font-style: italic;
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.45;
     color: var(--storm);
   }}
   .guide-close{{
     appearance: none; -webkit-appearance: none;
     background: none; border: 0; cursor: pointer;
-    color: var(--slate-ink);
+    color: var(--storm);
     font-family: var(--mono);
     font-size: 11px;
     letter-spacing: 0.06em;
@@ -1680,26 +2517,160 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     max-width: 1200px;
     margin: 80px auto 0;
     padding: 32px;
-    border-top: 1px solid rgba(0,39,80,0.08);
+    border-top: 1px solid var(--border-rule);
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     gap: 24px;
     font-family: var(--mono); font-size: 12px;
-    color: var(--slate-ink);
+    color: var(--storm);
   }}
   footer.colophon b{{ color: var(--midnight-navy); font-weight: 500; }}
   footer.colophon .center{{ text-align: center; font-style: italic; font-family: var(--serif); }}
   footer.colophon .right{{ text-align: right; }}
 
+  /* === Dark mode ===
+     Activated by JS setting [data-theme="dark"] on <html>. The inline script
+     in <head> resolves the effective theme (stored preference > system) before
+     first paint to avoid FOUC. Fallback when JS is disabled: page renders in
+     light always (acceptable trade-off for static reports). */
+  :root[data-theme="dark"] {{
+    --ghost-canvas:  #0b1124;
+    --pure:          #14192a;
+    --ice-veil:      #0d1734;
+    --amber-veil:    #1f160b;
+    --amber:         #ff9a4d;
+    --amber-soft:    rgba(255,154,77,0.16);
+    --amber-rule:    rgba(255,154,77,0.36);
+    --midnight-navy: #e6eefb;     /* primary text only */
+    --ash:           #6b7184;
+    --storm:         #b1b5c0;
+    --fog:           #4a5168;
+
+    --on-dark-border-strong: rgba(255,255,255,0.14);
+    --surface-glass-soft:    rgba(20,25,42,0.55);
+
+    --border-faint:  rgba(255,255,255,0.04);
+    --border-subtle: rgba(255,255,255,0.06);
+    --border-rule:   rgba(255,255,255,0.10);
+    --border-strong: rgba(255,255,255,0.14);
+
+    --navy-08:     rgba(255,255,255,0.10);
+    --ring-subtle: rgba(255,255,255,0.06) 0 0 0 1px;
+    --ring-rule:   rgba(255,255,255,0.08) 0 0 0 1px;
+
+    --shadow-xl:     rgba(0,0,0,0.45) 0 56px 72px -16px, rgba(0,0,0,0.40) 0 32px 32px -16px, rgba(0,0,0,0.35) 0 6px 12px -3px, rgba(255,255,255,0.05) 0 0 0 1px;
+    --shadow-md:     rgba(0,0,0,0.35) 0 6px 16px -3px, rgba(255,255,255,0.05) 0 0 0 1px;
+    --shadow-subtle: rgba(255,255,255,0.04) 0 1px 1px 0 inset, rgba(0,0,0,0.30) 0 8px 16px 0, rgba(0,0,0,0.25) 0 4px 12px 0, rgba(0,0,0,0.20) 0 1px 2px 0, rgba(255,255,255,0.05) 0 0 0 1px;
+  }}
+
+  /* Components that use --midnight-navy AS A BACKGROUND need a fixed
+     dark navy in dark mode — the flipped token would invert them. */
+  [data-theme="dark"] .logo .mk         {{ background: #1b2540; color: var(--chartreuse); }}
+  [data-theme="dark"] .sec-eyebrow .n   {{ background: #1b2540; color: var(--on-dark); }}
+  [data-theme="dark"] .consensus-tag    {{ background: #1b2540; color: var(--on-dark); }}
+  [data-theme="dark"] .tenth-tag        {{ background: #1b2540; color: var(--amber); }}
+  [data-theme="dark"] .guide-toggle     {{ background: #1b2540; color: var(--chartreuse);
+                                           box-shadow: rgba(0,0,0,0.55) 0 1px 3px 0,
+                                                       rgba(0,0,0,0.65) 0 12px 24px -12px,
+                                                       rgba(255,255,255,0.06) 0 0.5px 0.5px 0 inset; }}
+  [data-theme="dark"] .guide-toggle:hover{{ background: #243054;
+                                            box-shadow: rgba(0,0,0,0.65) 0 1px 3px 0,
+                                                        rgba(0,0,0,0.75) 0 16px 28px -12px,
+                                                        rgba(255,255,255,0.08) 0 0.5px 0.5px 0 inset; }}
+  /* Closest chip — chartreuse bg, force dark text */
+  [data-theme="dark"] .f-name .f-mark           {{ color: #1b2540; background: var(--chartreuse); }}
+  [data-theme="dark"] .f-name .f-mark.farthest  {{ background: transparent; color: var(--storm);
+                                                   box-shadow: 0 0 0 1px rgba(255,255,255,0.20); }}
+
+  /* Past-reports button: solid white in light → translucent in dark */
+  [data-theme="dark"] .mast-index-btn       {{ background: rgba(255,255,255,0.04);
+                                               border: 1px solid rgba(255,255,255,0.14);
+                                               color: var(--midnight-navy); }}
+  [data-theme="dark"] .mast-index-btn:hover {{ background: var(--chartreuse);
+                                               border-color: var(--chartreuse);
+                                               color: #1b2540; }}
+
+  /* Hard-coded borders that aren't on tokens yet */
+  [data-theme="dark"] .masthead         {{ border-bottom-color: rgba(255,255,255,0.10); }}
+  [data-theme="dark"] footer.colophon   {{ border-top-color: rgba(255,255,255,0.10); }}
+
+  /* Map card surfaces */
+  [data-theme="dark"] .map-svg          {{ background: var(--pure); }}
+  [data-theme="dark"] .map-help summary {{ background: var(--pure); color: var(--storm); }}
+  [data-theme="dark"] .map-help summary:hover,
+  [data-theme="dark"] .map-help[open] summary {{ background: #1b2540; color: var(--chartreuse); }}
+  [data-theme="dark"] .map-help-popover           {{ background: var(--pure); }}
+  [data-theme="dark"] .map-help-popover p         {{ color: var(--midnight-navy); }}
+  [data-theme="dark"] .map-help-popover .map-help-title {{ color: var(--storm); }}
+
+  /* SVG ink overrides — split by element + attribute so fill="none"
+     circles don't accidentally fill in. Order: more specific first. */
+  [data-theme="dark"] .map-svg svg circle[fill="#1b2540"]            {{ fill: var(--midnight-navy); }}
+  [data-theme="dark"] .map-svg svg circle[fill="none"][stroke="#1b2540"] {{ stroke: rgba(255,255,255,0.28); }}
+  [data-theme="dark"] .map-svg svg rect[fill="#1b2540"]              {{ fill: #1b2540; }}
+  [data-theme="dark"] .map-svg svg rect[fill="none"][stroke="#1b2540"]   {{ stroke: rgba(255,255,255,0.36); }}
+  [data-theme="dark"] .map-svg svg g[fill="#1b2540"]                 {{ fill: var(--midnight-navy); }}
+  [data-theme="dark"] .map-svg svg g[fill="#7c8293"]                 {{ fill: var(--storm); }}
+  [data-theme="dark"] .map-svg svg text[fill="#1b2540"]              {{ fill: var(--midnight-navy); }}
+  [data-theme="dark"] .map-svg svg text[fill="#d0f100"]              {{ fill: var(--chartreuse); }}
+  [data-theme="dark"] .map-svg svg text[fill="#6b7184"]              {{ fill: var(--storm); }}
+  [data-theme="dark"] .map-svg svg text[fill="#7c8293"]              {{ fill: var(--storm); }}
+  [data-theme="dark"] .map-svg svg g[stroke="rgba(0,39,80,0.06)"]    {{ stroke: rgba(255,255,255,0.06); }}
+  [data-theme="dark"] .map-svg svg g[stroke="rgba(0,39,80,0.10)"]    {{ stroke: rgba(255,255,255,0.10); }}
+  [data-theme="dark"] .map-svg svg g[stroke="rgba(27,37,64,0.20)"]   {{ stroke: rgba(255,255,255,0.16); }}
+
+  /* Subtle pill/header backgrounds layered on dark surface */
+  [data-theme="dark"] .map-top .pill                    {{ background: rgba(255,255,255,0.04); }}
+  [data-theme="dark"] .frames-head                      {{ background: rgba(255,255,255,0.02); }}
+  [data-theme="dark"] .tenth-foot                       {{ background: rgba(255,255,255,0.02); }}
+  [data-theme="dark"] .mode                             {{ background: rgba(255,255,255,0.03); }}
+  [data-theme="dark"] .tenth-body .pull,
+  [data-theme="dark"] .consensus-body .pull,
+  [data-theme="dark"] .f-body .pull                     {{ background: rgba(255,255,255,0.04); }}
+  [data-theme="dark"] .frame:hover                      {{ background: rgba(255,255,255,0.02); }}
+  [data-theme="dark"] .frame.open                       {{ background: rgba(255,255,255,0.03); }}
+  [data-theme="dark"] .guide-panel-foot                 {{ background: rgba(255,255,255,0.03); }}
+
+  /* Painting on hero — slight dim for visual continuity */
+  [data-theme="dark"] .hero-bg                          {{ filter: brightness(0.75); }}
+
+  /* === Theme toggle button === */
+  .theme-toggle{{
+    appearance: none; -webkit-appearance: none;
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    color: var(--midnight-navy);
+    width: 32px; height: 32px;
+    border-radius: 999px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+    flex-shrink: 0;
+  }}
+  .theme-toggle:hover{{ background: var(--border-subtle); }}
+  .theme-toggle:focus-visible{{ outline: 2px solid var(--chartreuse); outline-offset: 2px; }}
+  .theme-toggle svg{{ width: 16px; height: 16px; display: block; }}
+  .theme-toggle .icon-moon{{ display: none; }}
+  .theme-toggle .icon-sun{{ display: block; }}
+  [data-theme="dark"] .theme-toggle{{
+    border-color: rgba(255,255,255,0.18);
+    color: var(--chartreuse);
+  }}
+  [data-theme="dark"] .theme-toggle:hover{{ background: rgba(255,255,255,0.06); }}
+  [data-theme="dark"] .theme-toggle .icon-sun{{ display: none; }}
+  [data-theme="dark"] .theme-toggle .icon-moon{{ display: block; }}
+
   @media (max-width: 920px){{
     .hero-inner{{ grid-template-columns: 1fr; padding: 40px 24px 24px; }}
-    .hero-stats{{ grid-template-columns: 1fr 1fr; }}
+    .hero-quote.consensus{{ display: none; }}
+    .hero-q{{ font-size: 15px; }}
     .map-foot{{ grid-template-columns: 1fr 1fr; }}
-    .map-foot .cell{{ border-bottom: 1px solid rgba(0,39,80,0.06); }}
+    .map-foot .cell{{ border-bottom: 1px solid var(--border-subtle); }}
     .modes{{ grid-template-columns: 1fr; }}
     .frames-head{{ display: none; }}
-    .frame-row{{ grid-template-columns: 40px 1fr 80px 16px; }}
-    .frame-row .f-tag, .frame-row .f-bar{{ display: none; }}
+    .frame-row{{ grid-template-columns: 40px 1fr 80px 16px; row-gap: 4px; }}
+    .frame-row .f-bar{{ display: none; }}
+    .frame-row .f-lean{{ grid-column: 2; grid-row: 2; font-size: 14px; max-width: none; }}
     .f-body{{ padding: 4px 24px 22px 24px; }}
     .tenth-top{{ grid-template-columns: 1fr; }}
     .tenth-d-stat{{ text-align: left; }}
@@ -1707,52 +2678,96 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     .consensus-d{{ text-align: left; }}
     .consensus-body{{ column-count: 1; }}
   }}
+
+  /* Takeaway markers — conclusion (qué creer) + action (qué hacer) */
+  mark.tk-c, mark.tk-a {{
+    background: transparent;
+    color: inherit;
+    padding: 0 2px;
+    border-radius: 2px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    transition: background 0.15s ease;
+  }}
+  mark.tk-c {{
+    background: linear-gradient(180deg, transparent 55%, rgba(190, 230, 90, 0.55) 55%);
+  }}
+  mark.tk-a {{
+    background: linear-gradient(180deg, transparent 55%, rgba(120, 200, 230, 0.45) 55%);
+    font-weight: 500;
+  }}
+  body.tk-off mark.tk-c, body.tk-off mark.tk-a {{ background: transparent; font-weight: inherit; }}
+
+  .tk-toggle {{
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 9999;
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(20, 20, 24, 0.85);
+    color: #f5f5f0;
+    font: 500 12px/1.2 system-ui, -apple-system, sans-serif;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    user-select: none;
+  }}
+  .tk-toggle:hover {{ background: rgba(40, 40, 48, 0.95); }}
+  .tk-toggle .dot-c {{ width: 10px; height: 10px; border-radius: 2px; background: rgba(190, 230, 90, 0.7); display: inline-block; }}
+  .tk-toggle .dot-a {{ width: 10px; height: 10px; border-radius: 2px; background: rgba(120, 200, 230, 0.6); display: inline-block; }}
+  .tk-legend {{ font-size: 10px; opacity: 0.75; }}
 </style>
 </head>
 <body>
+<button class="tk-toggle" onclick="document.body.classList.toggle('tk-off')" title="Alternar marcadores conclusión / acción">
+  <span class="dot-c"></span><span class="tk-legend">conclusión</span>
+  <span class="dot-a"></span><span class="tk-legend">acción</span>
+</button>
 <main data-screen-label="{t(locale, "screen_label")}">
 
   <header class="masthead">
     <div class="logo"><span class="mk">10</span> Henge</div>
     <div class="mast-meta">
-      <b>{t(locale, "masthead_report")} #{report_id}</b><span class="sep">·</span>{timestamp}<span class="sep">·</span>v0.4
+      <b>{t(locale, "masthead_report")} #{report_id}</b><span class="sep">·</span>{timestamp}<span class="sep">·</span>v0.6
     </div>
-    <a class="mast-index-btn" href="../index.html" aria-label="{t(locale, "masthead_index_aria")}">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 3.5h12M2 8h12M2 12.5h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-      <span>{t(locale, "masthead_index_btn")}</span>
-    </a>
+    <div class="mast-actions">
+      <a class="mast-index-btn" href="../index.html" aria-label="{t(locale, "masthead_index_aria")}">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 3.5h12M2 8h12M2 12.5h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span>{t(locale, "masthead_index_btn")}</span>
+      </a>
+      <button type="button" class="theme-toggle" aria-label="{t(locale, "theme_toggle_aria")}" title="{t(locale, "theme_toggle_aria")}">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
   </header>
 
   <section class="hero">
     <div class="hero-bg" aria-hidden="true"></div>
     <div class="hero-inner">
       <div>
+        <div class="hero-verdict">
+          <span>{t(locale, "hero_verdict_consensus")}</span><span class="sep">&middot;</span><b>{html_mod.escape(hero_verdict_label)}</b><span class="sep">&middot;</span><span>&sigma; {spread_sigma:.3f}</span>
+        </div>
         <h1 class="hero-h">{t(locale, "hero_h_a")}<br><em>{t(locale, "hero_h_b")}</em></h1>
         <p class="hero-dek">{t(locale, "hero_dek")}</p>
       </div>
 
-      <div class="hero-stats">
-        <div class="hero-stat">
-          <div class="lbl">{t(locale, "stat_tenth_d")}</div>
-          <div class="val acc">{tenth_distance:.3f}</div>
-          <div class="sub">{t(locale, "stat_vs_centroid")}</div>
-        </div>
-        <div class="hero-stat">
-          <div class="lbl">{t(locale, "stat_closest")}</div>
-          <div class="val">{min_frame_distance:.3f}</div>
-          <div class="sub">{html_mod.escape(closest_name)}</div>
-        </div>
-        <div class="hero-stat">
-          <div class="lbl">{t(locale, "stat_most_divergent")}</div>
-          <div class="val">{max_frame_distance:.3f}</div>
-          <div class="sub">{html_mod.escape(most_divergent_name)}</div>
-        </div>
-        <div class="hero-stat" title="Consensus Fragility Index — see docs/cfi-spec.md">
-          <div class="lbl">{t(locale, "stat_verdict")}</div>
-          <div class="val">{html_mod.escape(hero_verdict_label)}</div>
-          <div class="sub">{html_mod.escape(hero_verdict_sub)}</div>
-          <div class="sub" style="opacity:.7;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.04em;margin-top:2px">{html_mod.escape(hero_cfi_line)}</div>
-        </div>
+      <div class="hero-quotes">
+        <a class="hero-quote consensus" href="#consensus">
+          <div class="mark"><span class="d"></span>{t(locale, "hero_quote_nine_mark")}</div>
+          <blockquote class="hero-q">{html_mod.escape(nine_lean)}</blockquote>
+          <div class="cite">{t(locale, "hero_quote_consensus_cite")} &middot; &sigma; {spread_sigma:.3f}</div>
+        </a>
+        <a class="hero-quote tenth" href="#tenth">
+          <div class="mark"><span class="ord">{t(locale, "hero_quote_tenth_mark_ord")}</span> &middot; {t(locale, "hero_quote_tenth_mark_label")}</div>
+          <blockquote class="hero-q">{tenth_lean_html}</blockquote>
+          <div class="cite">{t(locale, "hero_quote_tenth_cite")} &middot; d {tenth_distance:.3f}</div>
+        </a>
       </div>
     </div>
   </section>
@@ -1760,13 +2775,17 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   <div class="page">
 
   <section class="section">
-    <div class="sec-head">
+    <div class="sec-head sec-head-question">
       <div class="l">
         <div class="sec-eyebrow"><span class="n">01</span>{t(locale, "section01_eyebrow_prefix")}{report_id}</div>
         <h2>{t(locale, "section01_h2_a")}<em>{t(locale, "section01_h2_em")}</em></h2>
+      </div>
+      <div class="r">
         <blockquote class="question-pull">{question_safe}</blockquote>
       </div>
     </div>
+
+    {meta_html}
 
     <section class="map-card">
       <div class="map-top">
@@ -1793,6 +2812,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
           </div>
         </details>
         {map_svg}
+        {map_legend_html}
       </div>
 
       <div class="map-foot">
@@ -1821,7 +2841,9 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
 
     {consensus_block_html}
 
-    <article class="tenth-card">
+    {claims_panel_html}
+
+    <article class="tenth-card" id="tenth">
       <header class="tenth-top">
         <div>
           <div class="tenth-tag"><span class="d"></span>{t(locale, "tenth_tag_label")}</div>
@@ -1844,6 +2866,8 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
         <span>embed <b>{html_mod.escape(provider)}/{html_mod.escape(model)}</b> · ~USD {cost_estimate_usd:.2f}</span>
       </footer>
     </article>
+
+    {informed_card_html}
   </section>
 
   <section class="section">
@@ -1859,7 +2883,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
       <div class="frames-head">
         <span>{t(locale, "frames_head_idx")}</span>
         <span>{t(locale, "frames_head_frame")}</span>
-        <span>{t(locale, "frames_head_status")}</span>
+        <span>{t(locale, "frames_head_lean")}</span>
         <span>{t(locale, "frames_head_distance")}</span>
         <span style="text-align:right;">{t(locale, "frames_head_d")}</span>
         <span></span>
@@ -1870,7 +2894,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
 
   <footer class="colophon">
     <div>
-      <b>Henge v0.4</b><br>
+      <b>Henge v0.6</b><br>
       classical MDS · cosine<br>
       embed · {html_mod.escape(provider)}/{html_mod.escape(model)}
     </div>
@@ -1900,6 +2924,8 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
         <li>{t(locale, "guide_rule_5")}</li>
         <li>{t(locale, "guide_rule_6")}</li>
         <li>{t(locale, "guide_rule_7")}</li>
+        <li>{t(locale, "guide_rule_8")}</li>
+        <li>{t(locale, "guide_rule_9")}</li>
       </ol>
     </div>
     <div class="guide-panel-foot">
@@ -1929,6 +2955,30 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
         btn.setAttribute('aria-expanded', 'false');
       }}
     }});
+  }})();
+
+  /* Theme toggle — cycles light <-> dark, persists to localStorage. */
+  (function(){{
+    var btn = document.querySelector('.theme-toggle');
+    if (!btn) return;
+    btn.addEventListener('click', function(){{
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try {{ localStorage.setItem('henge-theme', next); }} catch (e) {{}}
+    }});
+    /* Live-react to system changes only when user hasn't picked. */
+    if (window.matchMedia) {{
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      var handler = function(e){{
+        var stored = null;
+        try {{ stored = localStorage.getItem('henge-theme'); }} catch(_){{}}
+        if (stored === 'light' || stored === 'dark') return;
+        document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+      }};
+      if (mq.addEventListener) mq.addEventListener('change', handler);
+      else if (mq.addListener) mq.addListener(handler);
+    }}
   }})();
 </script>
 </body>

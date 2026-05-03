@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "henge-mcp"
-version = "0.5.0"
+version = "0.6.0"
 description = "Structured Dissent Protocol — 9 cognitive frames + 1 mandatory steel-man dissenter."
 readme = "README.md"
 requires-python = ">=3.11"

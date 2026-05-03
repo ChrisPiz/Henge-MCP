@@ -6,59 +6,64 @@ from unittest.mock import AsyncMock, MagicMock
 
 from henge.agents import PROMPTS, PROMPTS_HASH, TEMPERATURE, TENTH_MAN, run_agents
 from henge.embed import project_mds
-from henge.pricing import (
-    HENGE_PRICING_VERSION,
-    anthropic_call_cost,
-    total_cost,
+from henge.providers.pricing import (
+    PRICING_VERSION,
+    build_cost_breakdown,
+    cost_for,
 )
 from henge.viz import compute_cfi
 
 
 @pytest.mark.asyncio
-async def test_partial_failure_8of9(mock_anthropic_client):
-    """1 frame falla → sistema continúa con 8 frames + tenth-man, marca el faltante."""
+async def test_partial_failure_8of9(mock_anthropic_client, mock_providers):
+    """1 frame falla → sistema continúa con 8 frames + blind + informed, marca el faltante.
+
+    The blind tenth-man fires in parallel with the 9; informed runs sequentially.
+    Failure injection on the 3rd frame call only — blind path is untouched.
+    """
     call_count = [0]
-    original_create = mock_anthropic_client.messages.create
+    base_side_effect = mock_providers.side_effect
 
-    async def maybe_fail(**kwargs):
+    async def maybe_fail(model_id, req):
         call_count[0] += 1
+        # Skip the blind/informed paths — only inject on the 3rd FRAME call.
+        if model_id in ("anthropic/opus-4-7", "openai/gpt-5") and (
+            "tenth" in (req.system or "").lower() or "blind dissent" in (req.system or "").lower()
+        ):
+            return await base_side_effect(model_id, req)
         if call_count[0] == 3:
-            raise RuntimeError("Simulated 1-of-9 API failure")
-        return await original_create(**kwargs)
+            raise RuntimeError("Simulated 1-of-9 frame failure")
+        return await base_side_effect(model_id, req)
 
-    mock_anthropic_client.messages.create = AsyncMock(side_effect=maybe_fail)
+    mock_providers.side_effect = maybe_fail
 
-    results = await run_agents(mock_anthropic_client, "Pregunta de prueba")
+    result = await run_agents("Pregunta de prueba")
 
-    assert len(results) == 10
-    failed = [r for r in results if r[2] == "failed"]
-    ok = [r for r in results if r[2] == "ok"]
+    assert isinstance(result, dict)
+    nine = result["nine"]
+    assert len(nine) == 9
+    failed = [r for r in nine if r[2] == "failed"]
     assert len(failed) == 1, f"Expected exactly 1 failed frame, got {len(failed)}"
-    assert len(ok) == 9, "8 frames + 1 tenth-man = 9 ok"
-    assert results[-1][0] == TENTH_MAN
-    assert results[-1][2] == "ok"
+    assert "blind" in result
+    assert "informed" in result
 
 
 @pytest.mark.asyncio
-async def test_partial_failure_abort_lt_8(mock_anthropic_client):
+async def test_partial_failure_abort_lt_8(mock_anthropic_client, mock_providers):
     """2+ frames fallan → RuntimeError con mensaje claro indicando cuántos sobrevivieron."""
     call_count = [0]
+    base_side_effect = mock_providers.side_effect
 
-    async def fail_two(**kwargs):
+    async def fail_two(model_id, req):
         call_count[0] += 1
         if call_count[0] in (2, 4):
-            raise RuntimeError("Simulated 2-of-9 API failure")
-        result = MagicMock()
-        text_part = MagicMock()
-        text_part.text = "ok response"
-        result.content = [text_part]
-        result.usage = MagicMock(input_tokens=10, output_tokens=20)
-        return result
+            raise RuntimeError("Simulated 2-of-9 frame failure")
+        return await base_side_effect(model_id, req)
 
-    mock_anthropic_client.messages.create = AsyncMock(side_effect=fail_two)
+    mock_providers.side_effect = fail_two
 
     with pytest.raises(RuntimeError, match=r"7/9"):
-        await run_agents(mock_anthropic_client, "Pregunta de prueba")
+        await run_agents("Pregunta de prueba")
 
 
 def test_centroid_excludes_tenth(synthetic_embeddings_10):
@@ -85,42 +90,29 @@ def test_centroid_excludes_tenth(synthetic_embeddings_10):
 
 
 @pytest.mark.asyncio
-async def test_temperature_is_zero(mock_anthropic_client):
-    """Cada llamada Anthropic debe pasar ``temperature=0`` para reproducibilidad,
-    excepto modelos en ``MODELS_WITHOUT_TEMPERATURE`` (Opus 4.7) que la
-    rechazan por requerir extended thinking.
+async def test_temperature_is_zero(mock_anthropic_client, mock_providers):
+    """Cada call a través del registry pasa temperature=0 por reproducibilidad.
 
-    Sin esto, mismo input produce verdict distinto entre corridas y la
-    palabra "measurement" del README es marketing. v0.5 lo fija como
-    decisión pre-registrada (ver WHITEPAPER.md §4).
+    Blind (Opus) tolera temperature=0; Anthropic provider lo silencia para Opus.
+    Frames + informed pasan temperature explícito al CompletionRequest.
     """
-    from henge.agents import MODELS_WITHOUT_TEMPERATURE
+    captured = []
+    base_side_effect = mock_providers.side_effect
 
-    seen_calls = []
-    original_create = mock_anthropic_client.messages.create
+    async def capture(model_id, req):
+        captured.append((model_id, req.temperature))
+        return await base_side_effect(model_id, req)
 
-    async def capture(**kwargs):
-        seen_calls.append((kwargs.get("model"), kwargs.get("temperature")))
-        return await original_create(**kwargs)
+    mock_providers.side_effect = capture
 
-    mock_anthropic_client.messages.create = AsyncMock(side_effect=capture)
-
-    await run_agents(mock_anthropic_client, "Pregunta de prueba")
+    await run_agents("Pregunta de prueba")
 
     assert TEMPERATURE == 0, "Module-level TEMPERATURE constant must be 0"
 
-    # 9 frames + 1 tenth-man = 10 calls minimum
-    assert len(seen_calls) == 10
-
-    for model, temp in seen_calls:
-        if model in MODELS_WITHOUT_TEMPERATURE:
-            assert temp is None, (
-                f"{model} rejects temperature; we must omit the kwarg, got {temp!r}"
-            )
-        else:
-            assert temp == 0, (
-                f"{model} must use temperature=0 for reproducibility; got {temp!r}"
-            )
+    # 9 frames + 1 blind + 1 informed = 11 calls total
+    assert len(captured) == 11, f"Expected 11 calls, got {len(captured)}"
+    for model_id, temp in captured:
+        assert temp == 0, f"{model_id} should pass temperature=0; got {temp!r}"
 
 
 def test_project_mds_excludes_failed_frames():
@@ -171,42 +163,58 @@ def test_prompts_hash_stable():
 
 
 def test_cost_breakdown_sums_components():
-    """``total_cost`` retorna la suma exacta de Anthropic + embeddings.
+    """``build_cost_breakdown`` retorna la suma exacta por bucket.
 
-    Regression contra v0.4 cost_usd hardcoded. cost_breakdown debe
-    derivarse de uso real, no de un literal.
+    Regression contra v0.4 cost_usd hardcoded. v0.6 cost_breakdown debe
+    derivarse de uso real (canonical ids), no de un literal. Legacy raw
+    SDK strings (e.g. ``claude-haiku-4-5-20251001``) deben ser
+    canonicalizados internamente.
     """
     advisor_usages = [
-        {"model": "claude-sonnet-4-6", "input_tokens": 1000, "output_tokens": 500},
-        {"model": "claude-sonnet-4-6", "input_tokens": 1200, "output_tokens": 600},
-        {"model": "claude-opus-4-7",   "input_tokens": 5000, "output_tokens": 2500},
+        {"model": "anthropic/sonnet-4-6", "input_tokens": 1000, "output_tokens": 500},
+        {"model": "anthropic/sonnet-4-6", "input_tokens": 1200, "output_tokens": 600},
+        {"model": "anthropic/opus-4-7",   "input_tokens": 5000, "output_tokens": 2500},
     ]
-    scoping = {"model": "claude-haiku-4-5-20251001", "input_tokens": 200, "output_tokens": 150}
+    scoping = {"model": "anthropic/haiku-4-5", "input_tokens": 200, "output_tokens": 150}
+    # Legacy raw SDK string — should be canonicalized internally.
     consensus = {"model": "claude-haiku-4-5-20251001", "input_tokens": 800, "output_tokens": 400}
 
     expected_anthropic = (
-        anthropic_call_cost(advisor_usages[0])
-        + anthropic_call_cost(advisor_usages[1])
-        + anthropic_call_cost(advisor_usages[2])
-        + anthropic_call_cost(scoping)
-        + anthropic_call_cost(consensus)
+        cost_for("anthropic/sonnet-4-6", 1000, 500)
+        + cost_for("anthropic/sonnet-4-6", 1200, 600)
+        + cost_for("anthropic/opus-4-7",   5000, 2500)
+        + cost_for("anthropic/haiku-4-5", 200, 150)
+        + cost_for("anthropic/haiku-4-5", 800, 400)
     )
 
-    breakdown = total_cost(
+    breakdown = build_cost_breakdown(
         advisor_usages=advisor_usages,
-        scoping_usage=scoping,
+        blind_usage=None,
+        informed_usage=None,
+        meta_usage=None,
+        canonical_usage=None,
+        scoping_haiku_usage=scoping,
+        scoping_adversarial_usage=None,
         consensus_usage=consensus,
-        embedding_model="text-embedding-3-small",
+        claims_extract_usage=None,
+        claims_verify_usage=None,
+        embedding_model="openai/text-embedding-3-large",
         embedding_input_tokens=2500,
     )
 
     assert abs(breakdown["anthropic_usd"] - round(expected_anthropic, 6)) < 1e-9
+    assert breakdown["openai_usd"] == 0.0  # no openai usages in this fixture
     assert breakdown["embedding_usd"] >= 0
     assert abs(
         breakdown["total_usd"]
-        - round(breakdown["anthropic_usd"] + breakdown["embedding_usd"], 6)
+        - round(
+            breakdown["anthropic_usd"]
+            + breakdown["openai_usd"]
+            + breakdown["embedding_usd"],
+            6,
+        )
     ) < 1e-9
-    assert breakdown["pricing_version"] == HENGE_PRICING_VERSION
+    assert breakdown["pricing_version"] == PRICING_VERSION
 
 
 def test_no_hardcoded_cost_in_logic():
@@ -228,7 +236,7 @@ def test_no_hardcoded_cost_in_logic():
     for pat in forbidden_patterns:
         assert pat not in text, (
             f"Regression: {pat!r} found in server.py. v0.5 derives cost from "
-            f"actual token usage via henge.pricing.total_cost()."
+            f"actual token usage via henge.providers.pricing.build_cost_breakdown()."
         )
 
 

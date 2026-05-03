@@ -72,3 +72,75 @@ def synthetic_embeddings_10():
     outlier[:, 0] -= 1.0  # bias toward opposite direction
     outlier = outlier / np.linalg.norm(outlier, axis=1, keepdims=True)
     return np.vstack([base, outlier]).tolist()
+
+
+from unittest.mock import patch as _patch
+
+from henge.providers.base import CompletionResponse as _CompletionResponse
+
+
+def _mock_complete_factory():
+    """Return an async function that simulates ``providers.complete`` per frame."""
+
+    async def _mock_complete(model_id, req):
+        system = (req.system or "").lower()
+
+        # Informed tenth-man (gpt-5): needs JSON-shaped response for json.loads()
+        if "audit a blind dissent" in system or "blind tenth-man dissent" in system:
+            text = '{"text":"refined dissent in mock","what_holds":[],"what_revised":[],"what_discarded":[]}'
+            return _CompletionResponse(
+                text=text,
+                input_tokens=120,
+                output_tokens=80,
+                model=model_id,
+                raw_model=model_id.split("/", 1)[1] if "/" in model_id else model_id,
+                finish_reason="end_turn",
+            )
+
+        if "empírico" in system or "empirical" in system:
+            text = "Análisis empírico: base rate ~30%, fuente: estudio 2023."
+        elif "histórico" in system or "historical" in system:
+            text = "Precedente: en 2019, intento similar fracasó por A."
+        elif "primer principios" in system or "first principles" in system or "first-principles" in system:
+            text = "Primer principio: la economía dicta que B se cumple."
+        elif "analógico" in system or "analogical" in system:
+            text = "Analogía: como en biología, evolución selecciona C."
+        elif "sistémico" in system or "systemic" in system:
+            text = "Sistémico: feedback loop reforzante produce D."
+        elif "ético" in system or "ethical" in system:
+            text = "Tensión ética: derechos vs consecuencias en E."
+        elif "contrarian" in system:
+            text = "Sí pero considera que F no es necesariamente cierto."
+        elif "optimist" in system:
+            text = "Caso 10×: si G ocurre, se desbloquea H."
+        elif "pre-mortem" in system or "premortem" in system:
+            text = "Modo de falla: equipo no pudo cerrar I porque J."
+        else:
+            text = f"Respuesta genérica (model={model_id})."
+
+        return _CompletionResponse(
+            text=text,
+            input_tokens=120,
+            output_tokens=80,
+            model=model_id,
+            raw_model=model_id.split("/", 1)[1] if "/" in model_id else model_id,
+            finish_reason="end_turn",
+        )
+
+    return _mock_complete
+
+
+@pytest.fixture
+def mock_providers():
+    """Patch ``henge.agents.complete`` and ``henge.tenth_man.complete`` so all
+    provider calls (9 frames + blind + informed) return deterministic text.
+
+    Both modules bind ``complete`` at import time, so we must patch both
+    references to intercept every call. Yields the AsyncMock instance so
+    individual tests can install side_effects (e.g. raise on the 3rd call to
+    simulate a frame failure).
+    """
+    mock = AsyncMock(side_effect=_mock_complete_factory())
+    with _patch("henge.agents.complete", new=mock), \
+         _patch("henge.tenth_man.complete", new=mock):
+        yield mock

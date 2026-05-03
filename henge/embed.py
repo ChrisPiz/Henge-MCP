@@ -50,7 +50,7 @@ def _save_embedding(text: str, provider: str, model: str, embedding):
     path.write_text(json.dumps(embedding))
 
 
-def _embed_openai(texts, model="text-embedding-3-small"):
+def _embed_openai(texts, model="text-embedding-3-large"):
     from openai import OpenAI
     client = OpenAI()
     resp = client.embeddings.create(model=model, input=texts)
@@ -69,17 +69,17 @@ def _resolve_provider():
     provider = os.getenv("EMBED_PROVIDER", "openai").lower()
     if provider == "voyage":
         return "voyage", "voyage-3-large", _embed_voyage
-    return "openai", "text-embedding-3-small", _embed_openai
+    return "openai", "text-embedding-3-large", _embed_openai
 
 
-def embed_responses(texts):
-    """Batch embed N texts. Returns dict {ok, embeddings?, provider, model, error?, reason?}.
+def _average_enabled() -> bool:
+    """Read EMBED_AVERAGE at call time so monkeypatching works in tests."""
+    val = os.getenv("EMBED_AVERAGE", "false").strip().lower()
+    return val in ("1", "true", "yes", "on")
 
-    Errors propagate as structured dict, not raw exception, so MCP server returns
-    a clear error to the client instead of a stack trace.
-    """
-    provider, model, embed_fn = _resolve_provider()
 
+def _embed_with_cache(texts, provider, model, embed_fn):
+    """Embed texts using cache where available. Returns {ok, embeddings?, error?, reason?}."""
     embeddings = [_cached_embedding(t, provider, model) for t in texts]
     missing_idx = [i for i, e in enumerate(embeddings) if e is None]
 
@@ -99,21 +99,82 @@ def embed_responses(texts):
                 "reason": f"{provider}: {type(exc).__name__}: {exc}",
             }
 
+    return {"ok": True, "embeddings": embeddings}
+
+
+def embed_responses(texts):
+    """Batch embed N texts. Returns dict {ok, embeddings?, provider, model, error?, reason?}.
+
+    Errors propagate as structured dict, not raw exception, so MCP server returns
+    a clear error to the client instead of a stack trace.
+
+    When EMBED_AVERAGE=true: also embeds with the secondary provider (OpenAI ↔
+    Voyage), returns both embedding sets, and populates ``embeddings_extra`` in
+    the result. project_mds will average the two cosine-distance matrices before
+    MDS. Falls back to primary-only with ``average_partial=True`` if the secondary
+    provider fails.
+    """
+    primary_provider, primary_model, primary_fn = _resolve_provider()
+    primary = _embed_with_cache(texts, primary_provider, primary_model, primary_fn)
+    if not primary["ok"]:
+        return {
+            "ok": False,
+            "error": primary.get("error", "embed_failed"),
+            "reason": primary.get("reason", "primary provider failed"),
+        }
+
+    if not _average_enabled():
+        return {
+            "ok": True,
+            "embeddings": primary["embeddings"],
+            "provider": primary_provider,
+            "model": primary_model,
+        }
+
+    # Averaging path — call the OTHER provider.
+    if primary_provider == "openai":
+        other_provider, other_model, other_fn = "voyage", "voyage-3-large", _embed_voyage
+    else:
+        other_provider, other_model, other_fn = "openai", "text-embedding-3-large", _embed_openai
+
+    secondary = _embed_with_cache(texts, other_provider, other_model, other_fn)
+
+    if not secondary["ok"]:
+        # Fall back: primary only, signal partial averaging
+        return {
+            "ok": True,
+            "embeddings": primary["embeddings"],
+            "provider": primary_provider,
+            "model": primary_model,
+            "average_partial": True,
+            "average_partial_reason": secondary.get("reason", "secondary provider unavailable"),
+        }
+
     return {
         "ok": True,
-        "embeddings": embeddings,
-        "provider": provider,
-        "model": model,
+        "embeddings": primary["embeddings"],
+        "embeddings_extra": secondary["embeddings"],
+        "provider": primary_provider,
+        "model": primary_model,
+        "extra_provider": other_provider,
+        "extra_model": other_model,
     }
 
 
-def project_mds(embeddings, n_frames=None):
+def project_mds(embeddings, n_frames=None, embeddings_extra=None):
     """Classical MDS over pairwise cosine distance → 2D coords.
 
     Layout convention: embeddings are ordered [frame_0, ..., frame_{n-1}, tenth_man].
     The centroid is computed over the first ``n_frames`` (excluding the tenth-man).
     Distances are computed in the original embedding space using cosine distance —
     the MDS projection is for visualization only.
+
+    When ``embeddings_extra`` is provided (non-None), the cosine-distance
+    matrices of ``embeddings`` and ``embeddings_extra`` are computed
+    independently and averaged before MDS + centroid distances. This
+    reduces single-provider embedding bias. The centroid distances are still
+    computed in the primary embedding space (averaging spaces of different
+    dims makes no sense for the centroid).
 
     Args:
         embeddings: list of M vectors. Last position must be the tenth-man.
@@ -122,6 +183,8 @@ def project_mds(embeddings, n_frames=None):
             n_frames < 9 to handle partial-frame failures correctly — previously
             failed frames were embedded as their error stub, polluting the
             centroid.
+        embeddings_extra: optional list of M vectors from a second provider.
+            When present, (D_primary + D_extra) / 2 is used for MDS.
 
     Returns:
         dict with ``coords_2d``, ``distance_to_centroid_of_9`` (legacy key —
@@ -138,6 +201,15 @@ def project_mds(embeddings, n_frames=None):
         )
 
     cosine_distances = squareform(pdist(arr, metric="cosine"))
+    if embeddings_extra is not None:
+        arr_extra = np.array(embeddings_extra, dtype=float)
+        if arr_extra.shape[0] != m:
+            raise ValueError(
+                f"embeddings_extra length {arr_extra.shape[0]} does not match "
+                f"embeddings length {m}"
+            )
+        cosine_distances_extra = squareform(pdist(arr_extra, metric="cosine"))
+        cosine_distances = (cosine_distances + cosine_distances_extra) / 2.0
 
     mds = MDS(
         n_components=2,

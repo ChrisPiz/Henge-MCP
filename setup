@@ -256,8 +256,17 @@ LOCALE="$(grep -E '^HENGE_LOCALE=' "$ENV_FILE" 2>/dev/null | cut -d= -f2 || true
 echo "  Python:    $PY_VERSION"
 echo "  Repo:      $HENGE_DIR"
 echo "  Venv:      $HENGE_DIR/.venv"
-echo "  Embed:     ${EMBED:-openai (default)}"
+echo "  Embed:     ${EMBED:-openai/text-embedding-3-large (default)}"
 echo "  Locale:    ${LOCALE:-auto-detect from question}"
+echo
+echo "  Architecture (v0.6 — cross-lab):"
+echo "    9 advisors:        2 Sonnet + 1 Opus + 6 gpt-5"
+echo "    Scoping:           Haiku + gpt-5 adversarial review"
+echo "    Meta-frame audit:  gpt-5 (cross-lab)"
+echo "    Tenth-man blind:   Opus 4.7"
+echo "    Tenth-man informed: gpt-5 (cross-lab)"
+echo "    Claim verify:      gpt-5 (cross-lab)"
+echo "    Cost per run:      ~USD 1.10–1.20"
 echo
 echo "Next: fully quit Claude Code (close every terminal running 'claude'),"
 echo "      then reopen and try:  /decide should I take the new job?"

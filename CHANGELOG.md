@@ -8,6 +8,131 @@ documented under **Removed** with migration notes.
 
 ---
 
+## [Unreleased]
+
+### Added
+- **Takeaway markers in HTML reports** (`henge/viz.py::_apply_takeaway_markers`):
+  the rendered report now auto-highlights conclusions and actions with two
+  subtle highlighter-style marks. Conservative heuristic post-processor:
+  - `<mark class="tk-c">` (green) wraps the first paragraph after a conclusion
+    heading (`Conclusión / Inclinación neta / Recomendación / Veredicto /
+    Síntesis / Takeaway / Bottom line`).
+  - `<mark class="tk-a">` (cyan) wraps `<strong>` blocks and bullet lines
+    that open with imperative verbs (`Priorizar / Asignar / Empaquetar /
+    Posponer / Resistir / Embeber / Decisión / Segmento / Asignación /
+    Secuencia / Paquete N / Oferta N / Prioridad N / De-priorizar`,
+    plus English equivalents).
+  Idempotent — skips passages already containing a `tk-` marker.
+- **Toggle pill** (bottom-left of every report): one-click switch to
+  hide/show the markers when reading clean. CSS uses `body.tk-off` to flip
+  highlights to transparent without re-rendering.
+
+---
+
+## [0.6.0] - 2026-05-02
+
+### Added
+- **Provider abstraction layer** (`henge/providers/`): unified async interface
+  for Anthropic + OpenAI via `complete(canonical_id, req)`. Canonical model ids
+  (`anthropic/sonnet-4-6`, `anthropic/opus-4-7`, `openai/gpt-5`) are the
+  contract; raw SDK strings live only inside each provider.
+- **Multi-model 9 frames** (`henge/config/frame_assignment.py`): the 9
+  cognitive frames now route per-frame instead of all using Sonnet. Mix:
+  2× Sonnet 4.6 (analogical, ethical) + 1× Opus 4.7 (historical) +
+  6× gpt-5 (empirical, first-principles, systemic, soft-contrarian,
+  radical-optimist, pre-mortem). Cross-lab by design.
+- **Operational CONSTRAINTS** in all 9 frame prompts: each frame now ends
+  with a MUST/CANNOT/Output-format block specifying verifiable structure
+  (e.g. "cite at least 3 numerical figures with a source class"). Spanish
+  questions get Spanish section headers.
+- **Adversarial scoping** (`henge/scoping.py::run_scoping`): Haiku 4.5
+  produces base scoping questions, then gpt-5 cross-lab adds 2-4
+  adversarial questions that challenge unexamined assumptions in the
+  question itself. The scoping response surfaces `id`/`source`/
+  `challenges_assumption` per question.
+- **Canonical context** (`henge/scoping.py::finalize_context`): Opus 4.7
+  canonicalizes the user's free-form scoping answers into a tight
+  executive summary + flags inconsistencies, before the 9 advisors see it.
+- **Meta-frame audit** (`henge/meta_frame.py`): gpt-5 cross-lab classifies
+  the question along 4 axes (decision_class, urgency, question_quality,
+  meta_recommendation) BEFORE the 9 advisors run. If the question is
+  exploration disguised as decision or a proxy for the real question,
+  short-circuits with status `meta_early_exit` + `suggested_reformulation`,
+  saving ~$1.00/run.
+- **Tenth-man dual** (`henge/tenth_man.py`): replaces the single Opus
+  tenth-man with two:
+    - **Blind** (Opus 4.7) — no view of the 9, anticipates any plausible
+      consensus and produces the strongest pure dissent. Distance metric
+      uses this output's embedding.
+    - **Informed** (gpt-5, cross-lab) — sees the 9 + the blind, returns
+      structured reconciliation: `what_holds`, `what_revised`,
+      `what_discarded`. Surfaces consensus-vs-bias separation explicitly.
+- **Claim verification** (`henge/claims.py`): after the consensus is
+  synthesized, Sonnet extracts falsifiable claims (factual / prescriptive
+  / causal). Then gpt-5 cross-lab verifies each claim against the 9 frame
+  outputs and rates support_strength (strong / moderate / weak /
+  unsupported). Hallucinated consensus claims surface in red as
+  `unsupported`.
+- **HTML viz polish**: meta-frame audit card at top, claim-verification
+  panel after consensus, tenth-man split into blind + informed cards,
+  disagreement map points coloured by model family (anthropic blue /
+  openai green), each frame card carries the canonical model id chip.
+
+### Changed
+- **Default embedding model**: `text-embedding-3-small` →
+  `text-embedding-3-large`. Cost still <USD 0.001/run, ~15-25% better
+  Spanish recall.
+- **Cost breakdown** (`henge/providers/pricing.build_cost_breakdown`):
+  rewrite to use canonical model ids. The legacy v0.5 lookup keyed on
+  raw SDK strings missed every OpenAI call (silent 0.0). Now splits
+  honestly into `anthropic_usd` / `openai_usd` / `embedding_usd`, plus
+  a `by_phase` dict.
+- **Schema bump**: `schema_version` "2" → "0.6". `HENGE_VERSION` 0.5.0 →
+  0.6.0.
+- **Frame token budget**: `FRAME_MAX_TOKENS` 1500 → 4000 + per-call
+  `reasoning_effort="low"` for gpt-5 frames. Without this, gpt-5 burned
+  the full token budget on internal chain-of-thought and returned empty
+  visible content.
+- **OPENAI_API_KEY is now required** — gpt-5 powers 6/9 frames, meta-frame,
+  tenth-man informed, claim verification, and adversarial scoping. Add it
+  to `.env` if migrating from v0.5.
+
+### Cost target
+- Estimated USD ~1.00–1.50 per `/decide` run with all v0.6 features
+  enabled. Roughly half Anthropic (3 frames + Opus blind + Opus
+  canonical + Haiku scoping/consensus + Sonnet claims-extract) and half
+  OpenAI (6 frames + gpt-5 informed + meta-frame + adversarial + claim-
+  verify + embeddings).
+
+### Architectural rationale (cross-lab)
+- **Synthesis tasks stay in Anthropic** — scoping (Haiku), consensus
+  (Haiku), canonical context (Opus), claims extraction (Sonnet),
+  tenth-man blind (Opus). Same-lab consistency where structure matters.
+- **Audit tasks cross to OpenAI** — adversarial scoping, meta-frame,
+  tenth-man informed, claim verification. Cross-lab specifically catches
+  the case where the synth lab hallucinates: gpt-5 has no output-style
+  affinity with Haiku/Sonnet and surfaces orphan claims.
+
+### Deprecated
+- Single-model 9-Sonnet configuration (still possible by overriding
+  `FRAME_MODEL_MAP`, not the default).
+- Legacy `henge.pricing.total_cost` — replaced by
+  `henge.providers.pricing.build_cost_breakdown`. The legacy module is
+  kept for back-compat until v0.7 cleanup.
+- `EMBED_PROVIDER=voyage` is still supported but unused by default.
+  v0.7 may remove the Voyage path entirely if no demand surfaces.
+
+### Notes for v0.7+
+- `cross_lab_agreement` and `delta_signal` metrics on the tenth-man pair
+  (high/medium/low) — needs embeddings of both blind and informed.
+- Claim-extraction inline annotation in the consensus body (vs. separate
+  panel in v0.6).
+- `--force-full-run` MCP flag to bypass meta-frame `reformulate`
+  recommendations.
+- Feature-flag-aware reading guide.
+
+---
+
 ## [0.5.0] — 2026-05-01
 
 The "Validity + paper" release. Adopts a DORA-style hybrid model: rigor

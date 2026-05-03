@@ -14,7 +14,7 @@ from anthropic import AsyncAnthropic
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
-from . import pricing
+from .providers.pricing import build_cost_breakdown
 from .agents import (
     OPUS,
     PROMPTS_HASH,
@@ -27,12 +27,29 @@ from .consensus import HAIKU as CONSENSUS_HAIKU
 from .consensus import synthesize_consensus
 from .embed import embed_responses, project_mds
 from .scoping import HAIKU as SCOPING_HAIKU
-from .scoping import generate_questions
+from .scoping import (
+    CanonicalContext,
+    ScopingResult,
+    finalize_context,
+    generate_questions,
+    run_scoping,
+)
+from .claims import (
+    ClaimVerification,
+    ENABLE_CLAIM_VERIFICATION,
+    extract_claims,
+    verify_claims,
+)
+from .meta_frame import (
+    ENABLE_META_FRAME,
+    MetaFrameResult,
+    evaluate_question_quality,
+)
 from .storage import make_report_dir, make_report_id, write_index, write_record
 from .updater import get_update_status, update_message
 from .viz import compute_cfi, consensus_verdict, render
 
-HENGE_VERSION = "0.5.0"
+HENGE_VERSION = "0.6.0"
 
 # Load .env from project root regardless of cwd (Claude Code may spawn subprocess elsewhere).
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -42,13 +59,12 @@ mcp = FastMCP("henge")
 
 
 def _validate_keys_at_startup():
-    """Ping Anthropic + embed provider with a minimal call. Cost: ~USD 0.0001.
-
-    Auth failures here = clear error and exit. Auth failures during invocation
-    waste 60s and produce opaque stack traces.
+    """Ping Anthropic + OpenAI + (optional) Voyage with minimal calls.
+    Cost: ~USD 0.0002. Auth failures here = clear error and exit.
     """
     errors = []
 
+    # Anthropic — required
     if not os.getenv("ANTHROPIC_API_KEY"):
         errors.append(
             "ANTHROPIC_API_KEY no está en el environment. "
@@ -68,8 +84,43 @@ def _validate_keys_at_startup():
                 f"Verifica con `cat .env | grep ANTHROPIC`."
             )
 
-    provider = os.getenv("EMBED_PROVIDER", "openai").lower()
-    if provider == "voyage":
+    # OpenAI — required for v0.6 (gpt-5 frames + meta + informed + claim verification)
+    if not os.getenv("OPENAI_API_KEY"):
+        errors.append(
+            "OPENAI_API_KEY no está en el environment. "
+            "v0.6 lo necesita para gpt-5 (frames + meta-frame + tenth-man informed + "
+            "claim verification) además de embeddings. "
+            "Obtén una en https://platform.openai.com/api-keys"
+        )
+    else:
+        try:
+            from openai import OpenAI
+            client = OpenAI()
+            # Probe gpt-5 access via models.retrieve (zero tokens, confirms
+            # the key + the model is reachable on this account). A
+            # chat.completions ping doesn't work — gpt-5 is a reasoning
+            # model and burns the whole max_completion_tokens budget on
+            # internal chain-of-thought before producing visible output.
+            client.models.retrieve("gpt-5")
+        except Exception as exc:
+            errors.append(
+                f"OPENAI_API_KEY validación falló (gpt-5): {type(exc).__name__}: {exc}. "
+                f"Si tu cuenta no tiene acceso a gpt-5, mira el README — v0.6 requiere acceso al modelo frontier."
+            )
+        else:
+            # Embedding probe (Phase 7 default = 3-large)
+            try:
+                client.embeddings.create(
+                    model="text-embedding-3-large",
+                    input=["ping"],
+                )
+            except Exception as exc:
+                errors.append(
+                    f"OPENAI_API_KEY validación falló (embeddings): {type(exc).__name__}: {exc}"
+                )
+
+    # Voyage — optional, only when EMBED_PROVIDER=voyage
+    if os.getenv("EMBED_PROVIDER", "openai").lower() == "voyage":
         if not os.getenv("VOYAGE_API_KEY"):
             errors.append(
                 "VOYAGE_API_KEY no está en el environment (configuraste EMBED_PROVIDER=voyage). "
@@ -83,24 +134,6 @@ def _validate_keys_at_startup():
             except Exception as exc:
                 errors.append(
                     f"VOYAGE_API_KEY validación falló: {type(exc).__name__}: {exc}"
-                )
-    else:
-        if not os.getenv("OPENAI_API_KEY"):
-            errors.append(
-                "OPENAI_API_KEY no está en el environment (provider default). "
-                "Obtén una en https://platform.openai.com/api-keys, "
-                "o configura EMBED_PROVIDER=voyage con VOYAGE_API_KEY."
-            )
-        else:
-            try:
-                from openai import OpenAI
-                OpenAI().embeddings.create(
-                    model="text-embedding-3-small",
-                    input=["ping"],
-                )
-            except Exception as exc:
-                errors.append(
-                    f"OPENAI_API_KEY validación falló: {type(exc).__name__}: {exc}"
                 )
 
     if errors:
@@ -120,7 +153,11 @@ async def _compute_cfi_only(client, question, context, temperature):
     plus per-run cost, or an error dict.
     """
     try:
-        results = await run_agents(client, question, context, temperature=temperature)
+        agent_result = await run_agents(question, context, temperature=temperature)
+        nine = agent_result["nine"]
+        blind = agent_result["blind"]
+        blind_status = "ok" if blind.opus_usage else "failed"
+        results = list(nine) + [(TENTH_MAN, blind.text, blind_status, blind.opus_usage)]
     except RuntimeError as exc:
         return {"error": "agents_failed", "reason": str(exc)}
 
@@ -132,7 +169,11 @@ async def _compute_cfi_only(client, question, context, temperature):
         return {"error": "embed_failed", "reason": embed_result.get("reason")}
 
     n_compact_frames = sum(1 for _, _, s, _ in results[:9] if s == "ok")
-    proj = project_mds(embed_result["embeddings"], n_frames=n_compact_frames)
+    proj = project_mds(
+        embed_result["embeddings"],
+        n_frames=n_compact_frames,
+        embeddings_extra=embed_result.get("embeddings_extra"),
+    )
 
     distances_list = [None] * 10
     for compact_i, orig_i in enumerate(success_indices):
@@ -141,11 +182,18 @@ async def _compute_cfi_only(client, question, context, temperature):
     frame_distances_compact = [d for d in distances_list[:9] if d is not None]
     cfi_block = compute_cfi(distances_list[9], frame_distances_compact)
 
-    advisor_usages = [u for _, _, _, u in results]
-    cost = pricing.total_cost(
-        advisor_usages=advisor_usages,
-        scoping_usage=None,
+    advisor_usages_cfi = [u for _, _, _, u in results[:9]]
+    cost = build_cost_breakdown(
+        advisor_usages=advisor_usages_cfi,
+        blind_usage=blind.opus_usage,
+        informed_usage=None,
+        meta_usage=None,
+        canonical_usage=None,
+        scoping_haiku_usage=None,
+        scoping_adversarial_usage=None,
         consensus_usage=None,
+        claims_extract_usage=None,
+        claims_verify_usage=None,
         embedding_model=embed_result["model"],
         embedding_input_tokens=0,
     )
@@ -233,23 +281,46 @@ async def decide(
 
     client = AsyncAnthropic()
 
+    scoping_usage: dict | None = None
     if not context and not skip_scoping:
-        questions, scoping_usage = await generate_questions(client, question)
-        if questions is None:
+        scoping_result = await run_scoping(question)
+        if scoping_result.haiku_usage:
+            scoping_usage = dict(scoping_result.haiku_usage)
+        if scoping_result.gpt5_usage:
+            if scoping_usage is None:
+                scoping_usage = dict(scoping_result.gpt5_usage)
+            else:
+                scoping_usage = {
+                    "model": scoping_usage["model"],
+                    "input_tokens": scoping_usage["input_tokens"] + scoping_result.gpt5_usage["input_tokens"],
+                    "output_tokens": scoping_usage["output_tokens"] + scoping_result.gpt5_usage["output_tokens"],
+                }
+        if not scoping_result.questions:
             return {
                 "status": "scoping_failed",
                 "reason": "Could not generate scoping questions. Pass skip_scoping=True or provide context to proceed.",
             }
         return {
             "status": "needs_context",
-            "questions": questions,
+            "questions": [
+                {
+                    "id": q.id,
+                    "text": q.text,
+                    "source": q.source,
+                    "challenges_assumption": q.challenges_assumption,
+                }
+                for q in scoping_result.questions
+            ],
+            "adversarial_count": scoping_result.adversarial_count,
             "note": (
                 "Present these questions to the user in a numbered message, wait for "
                 "their reply, then call decide() again with question + their answers "
-                "as context. ALSO tell the user — at the bottom of the questions "
-                "message — that they can skip the questions and run immediately by "
-                "saying 'skip' / 'omitir' / 'corre ya', in which case call decide "
-                "again with skip_scoping=True."
+                "as context. Adversarial questions (source='adversarial') challenge a "
+                "hidden assumption in the original question — surface those distinctly. "
+                "ALSO tell the user — at the bottom of the questions message — that "
+                "they can skip the questions and run immediately by saying 'skip' / "
+                "'omitir' / 'corre ya', in which case call decide again with "
+                "skip_scoping=True."
             ),
             "skip_hint": (
                 "Optional escape hatch: if you'd rather not answer, just say 'skip' "
@@ -262,15 +333,75 @@ async def decide(
 
     primary_temperature = run_temperature if k_runs > 1 else TEMPERATURE
 
+    # Phase 3: when the user provided free-form context, run Opus canonicalization
+    # so the 9 frames see a tight executive summary instead of raw user prose.
+    # Behind HENGE_ENABLE_CANONICAL_CONTEXT (default true). Falls back to passthrough
+    # on flag=false or Opus failure (graceful, see scoping.finalize_context).
+    canonical_usage: dict | None = None
+    if context and not skip_scoping:
+        canonical = await finalize_context(question, context)
+        effective_context = canonical.summary
+        canonical_usage = canonical.opus_usage
+    else:
+        effective_context = context
+
+    # Phase 4: meta-frame audit. gpt-5 cross-lab audits the question itself
+    # before the 9 advisors spend tokens. If the question is malformed
+    # (exploration disguised as decision, or a proxy for the real question),
+    # short-circuit with a recommendation. Behind HENGE_ENABLE_META_FRAME.
+    meta: MetaFrameResult | None = None
+    meta_usage: dict | None = None
+    if ENABLE_META_FRAME and effective_context:
+        meta = await evaluate_question_quality(question, effective_context)
+        meta_usage = meta.gpt5_usage
+        if meta.meta_recommendation in ("reformulate", "this-is-not-a-decision"):
+            return {
+                "status": "meta_early_exit",
+                "meta_recommendation": meta.meta_recommendation,
+                "decision_class": meta.decision_class,
+                "urgency": meta.urgency,
+                "question_quality": meta.question_quality,
+                "suggested_reformulation": meta.suggested_reformulation,
+                "reasoning": meta.reasoning,
+                "next_call_hint": (
+                    f"decide(question='<reformulated>', context={context!r})"
+                    if meta.meta_recommendation == "reformulate"
+                    else "This is not a decision question — try /explica or rephrase."
+                ),
+            }
+
     try:
-        results = await run_agents(client, question, context, temperature=primary_temperature)
+        agent_result = await run_agents(question, effective_context, temperature=primary_temperature)
     except RuntimeError as exc:
         return {"error": "agents_failed", "reason": str(exc)}
+
+    nine = agent_result["nine"]
+    blind = agent_result["blind"]
+    informed = agent_result["informed"]
+
+    # Build the v0.5-shape ``results`` list (9 frames + blind as the tenth slot)
+    # so the consensus / embedding / distance / cost code below keeps working
+    # unchanged. The blind output drives the distance metric (per Phase 5 spec).
+    blind_status = "ok" if blind.opus_usage else "failed"
+    results = list(nine) + [(TENTH_MAN, blind.text, blind_status, blind.opus_usage)]
 
     # results: list of (frame, response, status, usage) tuples, length 10.
     # status "ok" → usage is dict; status "failed" → usage is None.
     successful_frames = [(f, r) for f, r, s, _ in results[:9] if s == "ok"]
     consensus_text, consensus_usage = await synthesize_consensus(client, successful_frames, question)
+
+    # Phase 6: extract falsifiable claims from the consensus, then cross-lab
+    # verify each against the 9 advisors. Catches the case where Haiku
+    # hallucinated a claim that no advisor actually wrote.
+    claim_verifications: list[ClaimVerification] = []
+    extract_claims_usage: dict | None = None
+    verify_claims_usage: dict | None = None
+    if ENABLE_CLAIM_VERIFICATION and consensus_text:
+        extracted, extract_claims_usage = await extract_claims(consensus_text)
+        if extracted:
+            claim_verifications, verify_claims_usage = await verify_claims(
+                extracted, successful_frames
+            )
 
     # v0.5 fix: previously embedded ALL 10 responses, including the
     # "[failed: ...]" stub for failed frames. That polluted the centroid and
@@ -285,7 +416,11 @@ async def decide(
         return embed_result
 
     n_compact_frames = sum(1 for _, _, s, _ in results[:9] if s == "ok")
-    proj = project_mds(embed_result["embeddings"], n_frames=n_compact_frames)
+    proj = project_mds(
+        embed_result["embeddings"],
+        n_frames=n_compact_frames,
+        embeddings_extra=embed_result.get("embeddings_extra"),
+    )
 
     distances_list = [None] * 10
     coords_list = [None] * 10
@@ -293,14 +428,31 @@ async def decide(
         distances_list[orig_i] = proj["distance_to_centroid_of_9"][compact_i]
         coords_list[orig_i] = proj["coords_2d"][compact_i]
 
-    # Cost accounting — replaces the v0.4 hardcoded 0.65. Reads usage actually
-    # reported by the SDK; embedding tokens are not yet propagated from the
-    # embed module so the embedding line item reads 0 for now (TODO v0.6).
-    advisor_usages = [u for _, _, _, u in results]
-    cost_breakdown = pricing.total_cost(
+    # Phase 8: v0.6 cost_breakdown using canonical model ids — captures
+    # OpenAI gpt-5 spend (frames + informed + meta + adversarial scoping +
+    # claim verification) that the legacy anthropic-only path missed.
+    advisor_usages = [u for _, _, _, u in results[:9]]  # 9 frames only
+    # Reconstruct scoping breakdown from the merged scoping_usage dict.
+    # When run_scoping returned both Haiku + gpt-5, scoping_usage carries the
+    # merged anthropic/haiku-4-5 sum; the gpt-5 portion is lost in the
+    # legacy aggregation. For Phase 8 cost honesty, we attribute the merged
+    # blob to scoping_haiku and leave scoping_adversarial=None when we can't
+    # split it. Phase 3.4's shim returns the merged dict only.
+    scoping_haiku_usage = None
+    scoping_adversarial_usage = None
+    if scoping_usage and scoping_usage.get("model", "").startswith("anthropic/"):
+        scoping_haiku_usage = scoping_usage
+    cost_breakdown = build_cost_breakdown(
         advisor_usages=advisor_usages,
-        scoping_usage=scoping_usage if not context and not skip_scoping else None,
+        blind_usage=blind.opus_usage,
+        informed_usage=informed.gpt5_usage,
+        meta_usage=meta.gpt5_usage if meta else None,
+        canonical_usage=canonical_usage,
+        scoping_haiku_usage=scoping_haiku_usage,
+        scoping_adversarial_usage=scoping_adversarial_usage,
         consensus_usage=consensus_usage,
+        claims_extract_usage=extract_claims_usage,
+        claims_verify_usage=verify_claims_usage,
         embedding_model=embed_result["model"],
         embedding_input_tokens=0,
     )
@@ -351,6 +503,33 @@ async def decide(
         model=embed_result["model"],
         cost_estimate_usd=cost_usd,
         cfi_data=cfi_block,
+        meta_frame=(
+            {
+                "decision_class": meta.decision_class,
+                "urgency": meta.urgency,
+                "question_quality": meta.question_quality,
+                "meta_recommendation": meta.meta_recommendation,
+                "reasoning": meta.reasoning,
+            } if meta is not None else None
+        ),
+        informed=(
+            {
+                "text": informed.text,
+                "what_holds": informed.what_holds,
+                "what_revised": informed.what_revised,
+                "what_discarded": informed.what_discarded,
+            } if informed is not None else None
+        ),
+        claims=[
+            {
+                "claim_text": v.claim_text,
+                "claim_type": v.claim_type,
+                "supporting_frames": v.supporting_frames,
+                "contesting_frames": v.contesting_frames,
+                "support_strength": v.support_strength,
+            }
+            for v in claim_verifications
+        ],
     )
 
     n_frames_succeeded = sum(1 for _, _, s, _ in results[:9] if s == "ok")
@@ -379,7 +558,7 @@ async def decide(
             {"frame": f, "status": s, "usage": u}
             for f, _, s, u in results
         ],
-        "scoping": scoping_usage if not context and not skip_scoping else None,
+        "scoping": None,  # scoping returns early before reaching here
         "consensus": consensus_usage,
         "embedding": {
             "provider": embed_result["provider"],
@@ -392,7 +571,7 @@ async def decide(
     report_id = make_report_id(question)
     report_dir = make_report_dir(report_id)
     payload = {
-        "schema_version": "2",
+        "schema_version": "0.6",
         "id": report_id,
         "timestamp": datetime.now().astimezone().isoformat(),
         "question": question,
@@ -409,10 +588,41 @@ async def decide(
             for i, (frame, response, status, _) in enumerate(results[:9])
         ],
         "tenth_man": {
-            "response": results[9][1],
-            "distance": distances_list[9],
-            "embedding_2d": coords_list[9],
+            "blind": {
+                "text": blind.text,
+                "distance": distances_list[9],
+                "opus_usage": blind.opus_usage,
+                "embedding_2d": coords_list[9],
+            },
+            "informed": {
+                "text": informed.text,
+                "what_holds": informed.what_holds,
+                "what_revised": informed.what_revised,
+                "what_discarded": informed.what_discarded,
+                "gpt5_usage": informed.gpt5_usage,
+            },
         },
+        "consensus_claims": [
+            {
+                "claim_text": v.claim_text,
+                "claim_type": v.claim_type,
+                "supporting_frames": v.supporting_frames,
+                "contesting_frames": v.contesting_frames,
+                "support_strength": v.support_strength,
+            }
+            for v in claim_verifications
+        ],
+        "meta_frame": (
+            {
+                "decision_class": meta.decision_class,
+                "urgency": meta.urgency,
+                "question_quality": meta.question_quality,
+                "suggested_reformulation": meta.suggested_reformulation,
+                "meta_recommendation": meta.meta_recommendation,
+                "reasoning": meta.reasoning,
+                "gpt5_usage": meta.gpt5_usage,
+            } if meta is not None else None
+        ),
         "summary": {
             # legacy fields — deprecated, kept until v1.0 for compat
             "tenth_man_distance": tenth_distance,
@@ -536,6 +746,16 @@ async def decide(
             "distance": round(tenth_distance, 3) if tenth_distance is not None else None,
             "response": results[9][1],  # full text
         },
+        "consensus_claims": [
+            {
+                "claim_text": v.claim_text,
+                "claim_type": v.claim_type,
+                "supporting_frames": v.supporting_frames,
+                "contesting_frames": v.contesting_frames,
+                "support_strength": v.support_strength,
+            }
+            for v in claim_verifications
+        ],
         "summary": {
             # legacy — deprecated, kept until v1.0
             "tenth_man_distance": (
@@ -558,6 +778,17 @@ async def decide(
             "prompts_hash": PROMPTS_HASH,
             "k_runs_distribution": k_runs_distribution,
         },
+        "meta_frame": (
+            {
+                "decision_class": meta.decision_class,
+                "urgency": meta.urgency,
+                "question_quality": meta.question_quality,
+                "meta_recommendation": meta.meta_recommendation,
+                "reasoning": meta.reasoning,
+            }
+            if meta is not None
+            else None
+        ),
         "cost_breakdown": cost_breakdown,
         "cost_usd": cost_usd,  # deprecated alias, kept until v1.0
     }
