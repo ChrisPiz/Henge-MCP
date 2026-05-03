@@ -1,5 +1,7 @@
 # Henge
 
+> **Read this in:** [English](README.md) · [Español](README.es.md)
+
 **Structured Dissent Protocol** — 9 cognitive frames + 1 mandatory steel-man
 dissenter, exposed as an MCP server.
 
