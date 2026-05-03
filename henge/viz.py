@@ -1783,8 +1783,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
 
   /* Meta-frame audit card */
   .meta-card{{
-    margin: 16px auto 24px;
-    max-width: 880px;
+    margin: 16px 0 24px;
     padding: 18px 22px;
     border: 1px solid var(--border-rule);
     border-radius: 12px;
