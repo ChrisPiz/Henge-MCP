@@ -513,9 +513,21 @@ def _informed_card_html(informed_dict, locale: str = "es") -> str:
         f'  <div class="informed-body">'
         f'    {text_html}'
         f'    <div class="informed-grid">'
-        f'      <div class="informed-col"><h4>{html_mod.escape(holds_label)}</h4>{_list_html(holds, "holds")}</div>'
-        f'      <div class="informed-col"><h4>{html_mod.escape(revised_label)}</h4>{_list_html(revised, "revised")}</div>'
-        f'      <div class="informed-col"><h4>{html_mod.escape(discarded_label)}</h4>{_list_html(discarded, "discarded")}</div>'
+        f'      <div class="informed-col">'
+        f'        <div class="ord">§ 01</div>'
+        f'        <h5>{html_mod.escape(holds_label)}</h5>'
+        f'        {_list_html(holds, "holds")}'
+        f'      </div>'
+        f'      <div class="informed-col">'
+        f'        <div class="ord">§ 02</div>'
+        f'        <h5>{html_mod.escape(revised_label)}</h5>'
+        f'        {_list_html(revised, "revised")}'
+        f'      </div>'
+        f'      <div class="informed-col">'
+        f'        <div class="ord">§ 03</div>'
+        f'        <h5>{html_mod.escape(discarded_label)}</h5>'
+        f'        {_list_html(discarded, "discarded")}'
+        f'      </div>'
         f'    </div>'
         f'  </div>'
         f'</article>'
@@ -1835,11 +1847,24 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   .informed-body{{ font-family: var(--sans); }}
   .informed-body p{{ margin: 0 0 12px; line-height: 1.55; color: var(--midnight-navy); }}
   .informed-grid{{
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 14px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px;
   }}
-  .informed-col h4{{
-    margin: 0 0 6px; font-size: 11px; text-transform: uppercase;
-    letter-spacing: 0.06em; color: var(--storm); font-weight: 600;
+  .informed-col{{
+    background: var(--ghost-canvas);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: var(--ring-subtle);
+  }}
+  .informed-col .ord{{
+    font-family: var(--mono); font-size: 11px;
+    color: var(--storm);
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }}
+  .informed-col h5{{
+    margin: 8px 0 10px;
+    font-family: var(--sans); font-weight: 480;
+    font-size: 17px; letter-spacing: -0.09px;
+    color: var(--midnight-navy);
   }}
   .informed-list{{ margin: 0; padding-left: 16px; font-size: 13px; line-height: 1.45; color: var(--midnight-navy); }}
   .informed-list li{{ margin-bottom: 6px; }}
@@ -1849,6 +1874,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   [data-theme="dark"] .informed-top h3{{ color: var(--on-dark); }}
   [data-theme="dark"] .informed-sub{{ color: var(--on-dark-78); }}
   [data-theme="dark"] .informed-body p{{ color: var(--on-dark-92); }}
+  [data-theme="dark"] .informed-col h5{{ color: var(--on-dark); }}
   [data-theme="dark"] .informed-list{{ color: var(--on-dark-92); }}
   [data-theme="dark"] .informed-list.discarded li{{ color: var(--on-dark-62); }}
 
