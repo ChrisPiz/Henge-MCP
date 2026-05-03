@@ -526,13 +526,15 @@ def _meta_card_html(meta_dict, locale: str = "es") -> str:
     return (
         f'<section class="meta-card">'
         f'  <h3>{html_mod.escape(title)}</h3>'
-        f'  <div class="meta-grid">'
-        f'    {_cell("decision_class", decision)}'
-        f'    {_cell("urgency", urgency)}'
-        f'    {_cell("question_quality", quality)}'
-        f'    {_cell("meta_recommendation", rec, tone=rec_tone)}'
+        f'  <div class="meta-body">'
+        f'    <div class="meta-grid">'
+        f'      {_cell("decision_class", decision)}'
+        f'      {_cell("urgency", urgency)}'
+        f'      {_cell("question_quality", quality)}'
+        f'      {_cell("meta_recommendation", rec, tone=rec_tone)}'
+        f'    </div>'
+        f'    <div class="meta-reasoning">{_md_to_html(reasoning)}</div>'
         f'  </div>'
-        f'  <div class="meta-reasoning">{_md_to_html(reasoning)}</div>'
         f'</section>'
     )
 
@@ -1790,12 +1792,17 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
     box-shadow: var(--ring-rule);
   }}
   .meta-card h3{{ margin: 0 0 12px; font-family: var(--sans); font-size: 12px; font-weight: 600; color: var(--storm); text-transform: uppercase; letter-spacing: 0.06em; }}
-  .meta-grid{{
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
-    margin-bottom: 14px;
+  .meta-body{{
+    display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 24px;
+    align-items: start;
   }}
-  @media (max-width: 920px){{ .meta-grid{{ grid-template-columns: repeat(2, 1fr); }} }}
-  @media (max-width: 520px){{ .meta-grid{{ grid-template-columns: 1fr; }} }}
+  .meta-grid{{
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+  }}
+  @media (max-width: 820px){{
+    .meta-body{{ grid-template-columns: 1fr; gap: 14px; }}
+  }}
+  @media (max-width: 480px){{ .meta-grid{{ grid-template-columns: 1fr; }} }}
   .meta-cell{{
     padding: 10px 12px; border-radius: 10px;
     background: rgba(255,255,255,0.55);
@@ -1821,6 +1828,7 @@ def render(question, results, coords_2d, distances, provider, model, cost_estima
   .meta-cell-stop .meta-cell-value{{ color: #b32424; }}
   .meta-reasoning{{ font-size: 14px; line-height: 1.55; color: var(--storm); font-family: var(--sans); }}
   .meta-reasoning p{{ margin: 0 0 10px; }}
+  .meta-reasoning p:last-child{{ margin-bottom: 0; }}
   [data-theme="dark"] .meta-card{{ background: var(--surface-glass-08); border-color: var(--on-dark-border-strong); }}
   [data-theme="dark"] .meta-card h3{{ color: var(--on-dark-78); }}
   [data-theme="dark"] .meta-cell{{ background: rgba(0,0,0,0.20); border-color: var(--on-dark-border-strong); }}
